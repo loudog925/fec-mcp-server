@@ -6,6 +6,7 @@ import { getApiKey } from "./fecClient.js";
 import { registerCandidateSearchTool } from "./tools/candidates.js";
 import { registerFinancialSummaryTool } from "./tools/financials.js";
 import { registerItemizedContributionsTool } from "./tools/contributions.js";
+import { registerItemizedExpendituresTool } from "./tools/expenditures.js";
 
 try {
   getApiKey();
@@ -22,6 +23,7 @@ const server = new McpServer({
 registerCandidateSearchTool(server);
 registerFinancialSummaryTool(server);
 registerItemizedContributionsTool(server);
+registerItemizedExpendituresTool(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
