@@ -9,6 +9,7 @@ import { registerItemizedContributionsTool } from "./tools/contributions.js";
 import { registerItemizedExpendituresTool } from "./tools/expenditures.js";
 import { registerIndependentExpendituresTool } from "./tools/independentExp.js";
 import { registerDonorSearchTool } from "./tools/donors.js";
+import { registerSpendingSearchTool } from "./tools/spending.js";
 
 try {
   getApiKey();
@@ -28,6 +29,7 @@ registerItemizedContributionsTool(server);
 registerItemizedExpendituresTool(server);
 registerIndependentExpendituresTool(server);
 registerDonorSearchTool(server);
+registerSpendingSearchTool(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
