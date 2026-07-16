@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { getApiKey } from "./fecClient.js";
 import { registerCandidateSearchTool } from "./tools/candidates.js";
+import { registerFinancialSummaryTool } from "./tools/financials.js";
 
 try {
   getApiKey();
@@ -18,6 +19,7 @@ const server = new McpServer({
 });
 
 registerCandidateSearchTool(server);
+registerFinancialSummaryTool(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
