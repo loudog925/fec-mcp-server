@@ -1,0 +1,37 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { donorSearch } from "../src/tools/donors.js";
+
+describe("donorSearch", () => {
+  beforeEach(() => {
+    process.env.FEC_API_KEY = "test-key";
+    vi.restoreAllMocks();
+  });
+
+  it("throws when contributor_name is missing", async () => {
+    await expect(donorSearch({ contributor_name: "" })).rejects.toThrow(
+      "contributor_name is required"
+    );
+  });
+
+  it("calls the schedule_a endpoint scoped by contributor fields, across all committees", async () => {
+    const mockResponse = { results: [{ contributor_name: "SMITH, JOHN", contributor_employer: "ACME CORP" }] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await donorSearch({
+      contributor_name: "John Smith",
+      contributor_employer: "Acme Corp",
+    });
+
+    expect(JSON.parse(result)).toEqual(mockResponse);
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("/schedules/schedule_a/");
+    expect(calledUrl).toContain("contributor_name=John");
+    expect(calledUrl).toContain("contributor_employer=Acme");
+    expect(calledUrl).not.toContain("committee_id=");
+  });
+});
