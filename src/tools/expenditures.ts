@@ -24,7 +24,7 @@ export async function itemizedExpenditures(
     );
   }
   const data = await fetchFEC("/schedules/schedule_b/", {
-    committee_id,
+    committee_id: committee_id?.map((id) => id.toUpperCase()),
     recipient_name,
     recipient_state: params.recipient_state,
     disbursement_description: params.disbursement_description,

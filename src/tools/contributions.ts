@@ -25,7 +25,7 @@ export async function itemizedContributions(
     );
   }
   const data = await fetchFEC("/schedules/schedule_a/", {
-    committee_id,
+    committee_id: committee_id?.map((id) => id.toUpperCase()),
     contributor_name,
     contributor_state: params.contributor_state,
     contributor_employer: params.contributor_employer,

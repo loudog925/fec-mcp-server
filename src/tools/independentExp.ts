@@ -23,8 +23,8 @@ export async function independentExpenditures(
     );
   }
   const data = await fetchFEC("/schedules/schedule_e/", {
-    candidate_id,
-    committee_id,
+    candidate_id: candidate_id?.map((id) => id.toUpperCase()),
+    committee_id: committee_id?.map((id) => id.toUpperCase()),
     support_oppose_indicator: params.support_oppose_indicator,
     min_date: params.min_date,
     max_date: params.max_date,
