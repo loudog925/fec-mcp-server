@@ -25,6 +25,27 @@ export async function committeeSearch(params: CommitteeSearchParams): Promise<st
       "Provide at least one of: q (committee name), committee_id, candidate_id, state, or party to search committees."
     );
   }
+  const isIdOnlyLookup =
+    committee_id &&
+    committee_id.length === 1 &&
+    !q &&
+    !hasCandidateId &&
+    !state &&
+    !party &&
+    !params.committee_type &&
+    !params.designation &&
+    !params.organization_type &&
+    !params.treasurer_name;
+  if (isIdOnlyLookup) {
+    // The /committees/ list endpoint never returns email/website, even when
+    // filtered to one committee_id — only the singular /committee/{id}/
+    // detail endpoint includes them.
+    const data = await fetchFEC(
+      `/committee/${encodeURIComponent((committee_id as string[])[0].toUpperCase())}/`,
+      { cycle: params.cycle }
+    );
+    return JSON.stringify(data, null, 2);
+  }
   const data = await fetchFEC("/committees/", {
     q,
     committee_id: committee_id?.map((id) => id.toUpperCase()),
@@ -44,7 +65,7 @@ export async function committeeSearch(params: CommitteeSearchParams): Promise<st
 export function registerCommitteeSearchTool(server: McpServer): void {
   server.tool(
     "fec_committee_search",
-    "Search FEC committees by name, ID, affiliated candidate, state, party, type, or designation. Also serves as a single-committee lookup by passing committee_id directly.",
+    "Search FEC committees by name, ID, affiliated candidate, state, party, type, or designation. Passing a single committee_id does a direct lookup and also returns the committee's email and website (useful for identifying the firm/vendor behind a committee, e.g. by email domain), which the multi-result list search does not include.",
     {
       q: z.string().optional().describe("Committee name search text"),
       committee_id: z.array(z.string()).optional().describe("FEC committee IDs, e.g. [\"C00401224\"]"),
