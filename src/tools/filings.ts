@@ -21,6 +21,9 @@ export async function filings(params: FilingsParams): Promise<string> {
   const path = candidate_id
     ? `/candidate/${encodeURIComponent(candidate_id.toUpperCase())}/filings/`
     : `/committee/${encodeURIComponent((committee_id as string).toUpperCase())}/filings/`;
+  // form_type=RFAI (not request_type) is what the real OpenFEC API actually
+  // filters on for RFAIs; confirmed directly against the live API, where
+  // request_type=RFAI silently returns zero results.
   const data = await fetchFEC(path, {
     form_type: form_type ?? ["RFAI"],
     is_amended,
