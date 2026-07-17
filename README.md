@@ -22,12 +22,20 @@ see the separate `FECDownload` project.
 ## Running it standalone (manual smoke test)
 
 ```powershell
-node dist/index.js
+node --use-system-ca dist/index.js
 ```
 
 The process will hang, waiting on stdio — that's expected; it's ready. Stop
 it with Ctrl+C. If `FEC_API_KEY` isn't set (no `.env` and not in the
 environment), it prints an error and exits immediately instead.
+
+The `--use-system-ca` flag (also baked into `npm start`) makes Node trust
+the same certificate store as the rest of the OS. On a corporate network
+with an SSL-inspecting proxy, Node's default TLS stack rejects the proxy's
+injected certificate even though Windows/PowerShell/curl trust it — every
+tool call fails immediately with a TLS certificate error, which without
+this flag surfaces from the tools as a generic "request failed or timed
+out" message. See Troubleshooting below.
 
 ## Wiring it into Claude Desktop / Claude Code
 
@@ -40,7 +48,7 @@ the API key directly:
   "mcpServers": {
     "fec": {
       "command": "node",
-      "args": ["C:\\GitHub\\fec-mcp-server\\dist\\index.js"],
+      "args": ["--use-system-ca", "C:\\GitHub\\fec-mcp-server\\dist\\index.js"],
       "env": {
         "FEC_API_KEY": "your_real_key_here"
       }
@@ -82,4 +90,29 @@ tool (e.g. "search for federal candidates named Smith in California").
 | Env var | Required | Default | Notes |
 |---|---|---|---|
 | `FEC_API_KEY` | Yes | — | From https://api.open.fec.gov/developers/ |
-| `FEC_API_TIMEOUT_MS` | No | 30000 (60000 for `fec_donor_search` / `fec_spending_search`) | Per-request timeout override |
+| `FEC_API_TIMEOUT_MS` | No | 30000 (60000 for `fec_itemized_contributions` / `fec_donor_search` / `fec_spending_search`) | Per-request timeout override |
+
+## Troubleshooting: every tool times out
+
+If every tool fails, not just one, work through these in order:
+
+1. **Is `FEC_API_KEY` a real key, not `DEMO_KEY`?** `DEMO_KEY` shares a
+   global quota of 40 calls/hour across everyone using it on the internet
+   — it exhausts almost immediately under any real usage. A registered
+   personal key gets 1000 calls/hour. Rate-limited calls surface as a
+   distinct `RATE_LIMITED` error, not a timeout — if you're seeing that
+   error specifically, this is the cause.
+2. **Are you on a network with an SSL-inspecting proxy** (common on
+   corporate networks)? Node's TLS stack doesn't trust the OS certificate
+   store by default, so a proxy-injected certificate that Windows/curl
+   trust can still make every Node `fetch` call fail immediately with a
+   `SELF_SIGNED_CERT_IN_CHAIN` (or similar) error. This is now surfaced
+   as an explicit "TLS certificate error" message telling you to add
+   `--use-system-ca` (see above) — if you're on an older build without
+   that message, a generic "request failed or timed out" from every tool,
+   immediately rather than after a real delay, is the same symptom.
+3. **Is `fec_itemized_contributions` slow/timing out on broad queries?**
+   An unnarrowed `contributor_name` search on Schedule A (no date range,
+   no `committee_id`) has been observed taking ~26s upstream — the tool
+   uses a 60s timeout to give headroom, but a `min_date`/`max_date` range
+   will make it faster and more reliable.

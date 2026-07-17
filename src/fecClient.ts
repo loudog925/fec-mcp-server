@@ -61,7 +61,18 @@ export async function fetchFEC<T = unknown>(
   let response: Response;
   try {
     response = await fetch(url, { signal: controller.signal });
-  } catch {
+  } catch (err) {
+    const causeCode = (err as { cause?: { code?: string } })?.cause?.code;
+    if (typeof causeCode === "string" && causeCode.includes("CERT")) {
+      throw new FecApiError(
+        `TLS certificate error (${causeCode}) while connecting to the FEC API. ` +
+          "This usually means a corporate SSL-inspecting proxy is intercepting the " +
+          "connection with a certificate Node doesn't trust. Try running the server " +
+          "with the --use-system-ca flag (e.g. `node --use-system-ca dist/index.js`) " +
+          "so Node trusts the same certificates as the rest of the OS.",
+        "UNAVAILABLE"
+      );
+    }
     throw new FecApiError(
       "FEC API unavailable: the request failed or timed out.",
       "UNAVAILABLE"

@@ -101,4 +101,18 @@ describe("fetchFEC", () => {
       code: "UNAVAILABLE",
     });
   });
+
+  it("gives an actionable message (not a generic timeout) when the underlying failure is a TLS certificate error", async () => {
+    const certError = new TypeError("fetch failed");
+    (certError as unknown as { cause: unknown }).cause = {
+      code: "SELF_SIGNED_CERT_IN_CHAIN",
+      message: "self-signed certificate in certificate chain",
+    };
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(certError));
+
+    await expect(fetchFEC("/candidates/search/", {})).rejects.toMatchObject({
+      code: "UNAVAILABLE",
+      message: expect.stringContaining("--use-system-ca"),
+    });
+  });
 });
