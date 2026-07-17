@@ -72,6 +72,8 @@ is only used when you run `node dist/index.js` yourself.
 | `fec_itemized_contributions` | Schedule A itemized contributions to a committee |
 | `fec_itemized_expenditures` | Schedule B itemized disbursements by a committee |
 | `fec_independent_expenditures` | Schedule E independent expenditures for/against a candidate |
+| `fec_loans` | Schedule C loans, endorsements, and loan guarantees for a committee |
+| `fec_debts` | Schedule D debts and obligations for a committee |
 | `fec_donor_search` | Find a donor's contributions across all committees |
 | `fec_spending_search` | Find spending by vendor/description across all committees |
 | `fec_filings` | A candidate's or committee's filings by form type (RFAIs, quarterly reports, etc.) or amendment status |
