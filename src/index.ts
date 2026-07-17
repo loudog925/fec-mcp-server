@@ -11,6 +11,7 @@ import { registerIndependentExpendituresTool } from "./tools/independentExp.js";
 import { registerDonorSearchTool } from "./tools/donors.js";
 import { registerSpendingSearchTool } from "./tools/spending.js";
 import { registerComplianceFlagsTool } from "./tools/compliance.js";
+import { registerCommitteeSearchTool } from "./tools/committees.js";
 
 try {
   getApiKey();
@@ -32,6 +33,7 @@ registerIndependentExpendituresTool(server);
 registerDonorSearchTool(server);
 registerSpendingSearchTool(server);
 registerComplianceFlagsTool(server);
+registerCommitteeSearchTool(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
