@@ -67,12 +67,14 @@ is only used when you run `node dist/index.js` yourself.
 |---|---|
 | `fec_candidate_search` | Search federal candidates by name, state, office, party |
 | `fec_financial_summary` | A candidate's aggregated financial totals |
+| `fec_committee_search` | Search committees by name, ID, affiliated candidate, state, party, type |
+| `fec_committee_reports` | A committee's period-by-period financial reports (cash on hand, receipts, disbursements, debts) |
 | `fec_itemized_contributions` | Schedule A itemized contributions to a committee |
 | `fec_itemized_expenditures` | Schedule B itemized disbursements by a committee |
 | `fec_independent_expenditures` | Schedule E independent expenditures for/against a candidate |
 | `fec_donor_search` | Find a donor's contributions across all committees |
 | `fec_spending_search` | Find spending by vendor/description across all committees |
-| `fec_compliance_flags` | RFAIs and amendments on a candidate's or committee's filings |
+| `fec_filings` | A candidate's or committee's filings by form type (RFAIs, quarterly reports, etc.) or amendment status |
 
 ## Testing
 
