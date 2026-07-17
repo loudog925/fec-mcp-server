@@ -10,7 +10,7 @@ import { registerItemizedExpendituresTool } from "./tools/expenditures.js";
 import { registerIndependentExpendituresTool } from "./tools/independentExp.js";
 import { registerDonorSearchTool } from "./tools/donors.js";
 import { registerSpendingSearchTool } from "./tools/spending.js";
-import { registerComplianceFlagsTool } from "./tools/compliance.js";
+import { registerFilingsTool } from "./tools/filings.js";
 import { registerCommitteeSearchTool } from "./tools/committees.js";
 import { registerCommitteeReportsTool } from "./tools/committeeReports.js";
 
@@ -33,7 +33,7 @@ registerItemizedExpendituresTool(server);
 registerIndependentExpendituresTool(server);
 registerDonorSearchTool(server);
 registerSpendingSearchTool(server);
-registerComplianceFlagsTool(server);
+registerFilingsTool(server);
 registerCommitteeSearchTool(server);
 registerCommitteeReportsTool(server);
 
