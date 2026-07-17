@@ -12,6 +12,7 @@ import { registerDonorSearchTool } from "./tools/donors.js";
 import { registerSpendingSearchTool } from "./tools/spending.js";
 import { registerComplianceFlagsTool } from "./tools/compliance.js";
 import { registerCommitteeSearchTool } from "./tools/committees.js";
+import { registerCommitteeReportsTool } from "./tools/committeeReports.js";
 
 try {
   getApiKey();
@@ -34,6 +35,7 @@ registerDonorSearchTool(server);
 registerSpendingSearchTool(server);
 registerComplianceFlagsTool(server);
 registerCommitteeSearchTool(server);
+registerCommitteeReportsTool(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
