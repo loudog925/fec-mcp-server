@@ -3,7 +3,7 @@ import { z } from "zod";
 import { fetchFEC } from "../fecClient.js";
 
 export interface LoansParams {
-  committee_id: string;
+  committee_id?: string;
   candidate_name?: string;
   loan_source_name?: string;
   min_incurred_date?: string;
@@ -16,12 +16,12 @@ export interface LoansParams {
 }
 
 export async function loans(params: LoansParams): Promise<string> {
-  const { committee_id } = params;
-  if (!committee_id || !committee_id.trim()) {
-    throw new Error("committee_id is required, e.g. C00401224");
+  const { committee_id, loan_source_name } = params;
+  if ((!committee_id || !committee_id.trim()) && (!loan_source_name || !loan_source_name.trim())) {
+    throw new Error("Provide at least committee_id or loan_source_name to search loans.");
   }
   const data = await fetchFEC("/schedules/schedule_c/", {
-    committee_id: committee_id.toUpperCase(),
+    committee_id: committee_id ? committee_id.toUpperCase() : undefined,
     candidate_name: params.candidate_name,
     loan_source_name: params.loan_source_name,
     min_incurred_date: params.min_incurred_date,
@@ -38,11 +38,11 @@ export async function loans(params: LoansParams): Promise<string> {
 export function registerLoansTool(server: McpServer): void {
   server.tool(
     "fec_loans",
-    "Get a committee's loans, endorsements, and loan guarantees (Schedule C): loan source, original amount, incurred/payment dates.",
+    "Get loans, endorsements, and loan guarantees (Schedule C): loan source, original amount, incurred/payment dates. Look up by committee_id, or by loan_source_name (lender/payee) across all committees, or both.",
     {
-      committee_id: z.string().min(1).describe("FEC committee ID, e.g. C00401224"),
+      committee_id: z.string().optional().describe("FEC committee ID, e.g. C00401224 (provide this or loan_source_name)"),
       candidate_name: z.string().optional().describe("Candidate name search text"),
-      loan_source_name: z.string().optional().describe("Loan source/lender name search text"),
+      loan_source_name: z.string().optional().describe("Loan source/lender/payee name search text (provide this or committee_id)"),
       min_incurred_date: z.string().optional().describe("YYYY-MM-DD"),
       max_incurred_date: z.string().optional().describe("YYYY-MM-DD"),
       min_amount: z.number().optional().describe("Minimum original loan amount"),

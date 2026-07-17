@@ -7,9 +7,9 @@ describe("loans", () => {
     vi.restoreAllMocks();
   });
 
-  it("throws when committee_id is missing", async () => {
-    await expect(loans({ committee_id: "" })).rejects.toThrow(
-      "committee_id is required"
+  it("throws when neither committee_id nor loan_source_name is provided", async () => {
+    await expect(loans({})).rejects.toThrow(
+      "Provide at least committee_id or loan_source_name"
     );
   });
 
@@ -29,5 +29,23 @@ describe("loans", () => {
     expect(calledUrl).toContain("/schedules/schedule_c/");
     expect(calledUrl).toContain("committee_id=C00401224");
     expect(calledUrl).toContain("loan_source_name=Big");
+  });
+
+  it("searches by loan_source_name alone, across all committees", async () => {
+    const mockResponse = { results: [{ committee_id: "C00910612", loan_source_name: "BANK OF AMERICA" }] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await loans({ loan_source_name: "Bank of America" });
+
+    expect(JSON.parse(result)).toEqual(mockResponse);
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("/schedules/schedule_c/");
+    expect(calledUrl).toContain("loan_source_name=Bank");
+    expect(calledUrl).not.toContain("committee_id=");
   });
 });
