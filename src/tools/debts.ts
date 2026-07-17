@@ -3,7 +3,7 @@ import { z } from "zod";
 import { fetchFEC } from "../fecClient.js";
 
 export interface DebtsParams {
-  committee_id: string;
+  committee_id?: string;
   creditor_debtor_name?: string;
   nature_of_debt?: string;
   report_year?: number[];
@@ -23,12 +23,12 @@ export interface DebtsParams {
 }
 
 export async function debts(params: DebtsParams): Promise<string> {
-  const { committee_id } = params;
-  if (!committee_id || !committee_id.trim()) {
-    throw new Error("committee_id is required, e.g. C00401224");
+  const { committee_id, creditor_debtor_name } = params;
+  if ((!committee_id || !committee_id.trim()) && (!creditor_debtor_name || !creditor_debtor_name.trim())) {
+    throw new Error("Provide at least committee_id or creditor_debtor_name to search debts.");
   }
   const data = await fetchFEC("/schedules/schedule_d/", {
-    committee_id: committee_id.toUpperCase(),
+    committee_id: committee_id ? committee_id.toUpperCase() : undefined,
     creditor_debtor_name: params.creditor_debtor_name,
     nature_of_debt: params.nature_of_debt,
     report_year: params.report_year,
@@ -52,10 +52,10 @@ export async function debts(params: DebtsParams): Promise<string> {
 export function registerDebtsTool(server: McpServer): void {
   server.tool(
     "fec_debts",
-    "Get a committee's debts and obligations (Schedule D): creditor/debtor, nature of debt, amount incurred, outstanding balance beginning/close of period.",
+    "Get debts and obligations (Schedule D): creditor/debtor, nature of debt, amount incurred, outstanding balance beginning/close of period. Look up by committee_id, or by creditor_debtor_name across all committees, or both.",
     {
-      committee_id: z.string().min(1).describe("FEC committee ID, e.g. C00401224"),
-      creditor_debtor_name: z.string().optional().describe("Creditor/debtor name search text"),
+      committee_id: z.string().optional().describe("FEC committee ID, e.g. C00401224 (provide this or creditor_debtor_name)"),
+      creditor_debtor_name: z.string().optional().describe("Creditor/debtor name search text (provide this or committee_id)"),
       nature_of_debt: z.string().optional().describe("Nature of debt description"),
       report_year: z.array(z.number()).optional().describe("Calendar years"),
       min_payment_period: z.string().optional().describe("YYYY-MM-DD"),

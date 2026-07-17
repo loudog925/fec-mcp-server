@@ -7,9 +7,9 @@ describe("debts", () => {
     vi.restoreAllMocks();
   });
 
-  it("throws when committee_id is missing", async () => {
-    await expect(debts({ committee_id: "" })).rejects.toThrow(
-      "committee_id is required"
+  it("throws when neither committee_id nor creditor_debtor_name is provided", async () => {
+    await expect(debts({})).rejects.toThrow(
+      "Provide at least committee_id or creditor_debtor_name"
     );
   });
 
@@ -29,5 +29,23 @@ describe("debts", () => {
     expect(calledUrl).toContain("/schedules/schedule_d/");
     expect(calledUrl).toContain("committee_id=C00401224");
     expect(calledUrl).toContain("creditor_debtor_name=Office");
+  });
+
+  it("searches by creditor_debtor_name alone, across all committees", async () => {
+    const mockResponse = { results: [{ committee_id: "C00309567", creditor_debtor_name: "VERIZON WIRELESS" }] };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await debts({ creditor_debtor_name: "Verizon" });
+
+    expect(JSON.parse(result)).toEqual(mockResponse);
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("/schedules/schedule_d/");
+    expect(calledUrl).toContain("creditor_debtor_name=Verizon");
+    expect(calledUrl).not.toContain("committee_id=");
   });
 });
