@@ -19,8 +19,11 @@ describe("complianceFlags", () => {
     ).rejects.toThrow("Provide only one of candidate_id or committee_id");
   });
 
-  it("calls the candidate filings endpoint with a default RFAI request_type filter", async () => {
-    const mockResponse = { results: [{ request_type: "RFAI", file_number: 123456 }] };
+  it("calls the candidate filings endpoint with a default RFAI form_type filter", async () => {
+    // form_type=RFAI (not request_type) is what the real OpenFEC API actually
+    // filters on for RFAIs; confirmed directly against the live API, where
+    // request_type=RFAI silently returns zero results.
+    const mockResponse = { results: [{ form_type: "RFAI", file_number: 123456 }] };
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -33,7 +36,7 @@ describe("complianceFlags", () => {
     expect(JSON.parse(result)).toEqual(mockResponse);
     const calledUrl = fetchMock.mock.calls[0][0] as string;
     expect(calledUrl).toContain("/candidate/H8CA01234/filings/");
-    expect(calledUrl).toContain("request_type=RFAI");
+    expect(calledUrl).toContain("form_type=RFAI");
   });
 
   it("calls the committee filings endpoint when committee_id is given", async () => {
