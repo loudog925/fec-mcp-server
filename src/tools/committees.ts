@@ -14,6 +14,7 @@ export interface CommitteeSearchParams {
   cycle?: number[];
   treasurer_name?: string;
   per_page?: number;
+  page?: number;
 }
 
 export async function committeeSearch(params: CommitteeSearchParams): Promise<string> {
@@ -58,6 +59,7 @@ export async function committeeSearch(params: CommitteeSearchParams): Promise<st
     cycle: params.cycle,
     treasurer_name: params.treasurer_name,
     per_page: params.per_page ?? 20,
+    page: params.page,
   });
   return JSON.stringify(data, null, 2);
 }
@@ -78,6 +80,7 @@ export function registerCommitteeSearchTool(server: McpServer): void {
       cycle: z.array(z.number()).optional().describe("Two-year election cycles, e.g. [2024]"),
       treasurer_name: z.string().optional().describe("Treasurer name search text"),
       per_page: z.number().min(1).max(100).optional().describe("Results per page (default 20)"),
+      page: z.number().min(1).optional().describe("Page number for results beyond the first (default 1)"),
     },
     async (params) => {
       try {

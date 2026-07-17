@@ -14,6 +14,7 @@ export interface DonorSearchParams {
   min_amount?: number;
   max_amount?: number;
   per_page?: number;
+  page?: number;
 }
 
 export async function donorSearch(params: DonorSearchParams): Promise<string> {
@@ -32,6 +33,7 @@ export async function donorSearch(params: DonorSearchParams): Promise<string> {
       min_amount: params.min_amount,
       max_amount: params.max_amount,
       per_page: params.per_page ?? 20,
+      page: params.page,
     },
     DONOR_SEARCH_TIMEOUT_MS
   );
@@ -52,6 +54,7 @@ export function registerDonorSearchTool(server: McpServer): void {
       min_amount: z.number().optional(),
       max_amount: z.number().optional(),
       per_page: z.number().min(1).max(100).optional().describe("Results per page (default 20)"),
+      page: z.number().min(1).optional().describe("Page number for results beyond the first (default 1)"),
     },
     async (params) => {
       try {

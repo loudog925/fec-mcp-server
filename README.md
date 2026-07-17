@@ -65,7 +65,7 @@ is only used when you run `node dist/index.js` yourself.
 
 | Tool | Purpose |
 |---|---|
-| `fec_candidate_search` | Search federal candidates by name, state, office, party |
+| `fec_candidate_search` | Search federal candidates by name, state, office, party, or a single candidate_id for direct lookup |
 | `fec_financial_summary` | A candidate's aggregated financial totals |
 | `fec_committee_search` | Search committees by name, ID, affiliated candidate, state, party, type |
 | `fec_committee_reports` | A committee's period-by-period financial reports (cash on hand, receipts, disbursements, debts) |
@@ -77,6 +77,8 @@ is only used when you run `node dist/index.js` yourself.
 | `fec_donor_search` | Find a donor's contributions across all committees |
 | `fec_spending_search` | Find spending by vendor/description across all committees |
 | `fec_filings` | A candidate's or committee's filings by form type (RFAIs, quarterly reports, etc.) or amendment status |
+
+Every search tool accepts `per_page` (max 100) and `page` to walk result sets beyond the first page.
 
 ## Testing
 

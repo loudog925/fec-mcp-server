@@ -65,4 +65,18 @@ describe("filings", () => {
     expect(calledUrl).toContain("form_type=F3X");
     expect(calledUrl).not.toContain("form_type=RFAI");
   });
+
+  it("passes page through to the filings endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await filings({ committee_id: "C00401224", page: 3 });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("page=3");
+  });
 });

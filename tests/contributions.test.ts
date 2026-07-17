@@ -35,6 +35,20 @@ describe("itemizedContributions", () => {
     expect(calledUrl).toContain("min_amount=200");
   });
 
+  it("passes page through to the schedule_a endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await itemizedContributions({ committee_id: ["C00358796"], page: 3 });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("page=3");
+  });
+
   it("uses a 60000ms timeout, since unnarrowed schedule_a queries have been observed taking ~26s upstream", async () => {
     const fetchFECSpy = vi
       .spyOn(fecClient, "fetchFEC")

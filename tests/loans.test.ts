@@ -48,4 +48,18 @@ describe("loans", () => {
     expect(calledUrl).toContain("loan_source_name=Bank");
     expect(calledUrl).not.toContain("committee_id=");
   });
+
+  it("passes page through to the schedule_c endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await loans({ committee_id: "C00401224", page: 3 });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("page=3");
+  });
 });

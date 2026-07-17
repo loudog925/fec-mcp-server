@@ -34,4 +34,18 @@ describe("donorSearch", () => {
     expect(calledUrl).toContain("contributor_employer=Acme");
     expect(calledUrl).not.toContain("committee_id=");
   });
+
+  it("passes page through to the schedule_a endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await donorSearch({ contributor_name: "John Smith", page: 3 });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("page=3");
+  });
 });

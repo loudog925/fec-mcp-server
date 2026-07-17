@@ -63,4 +63,18 @@ describe("committeeSearch", () => {
     expect(calledUrl).toContain("committee_id=C00401224");
     expect(calledUrl).toContain("candidate_id=H8CA01234");
   });
+
+  it("passes page through to the list search", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await committeeSearch({ q: "ActBlue", page: 3 });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("page=3");
+  });
 });

@@ -8,10 +8,11 @@ export interface FilingsParams {
   form_type?: string[];
   is_amended?: boolean;
   per_page?: number;
+  page?: number;
 }
 
 export async function filings(params: FilingsParams): Promise<string> {
-  const { candidate_id, committee_id, form_type, is_amended, per_page } = params;
+  const { candidate_id, committee_id, form_type, is_amended, per_page, page } = params;
   if (!candidate_id && !committee_id) {
     throw new Error("Provide exactly one of candidate_id or committee_id.");
   }
@@ -28,6 +29,7 @@ export async function filings(params: FilingsParams): Promise<string> {
     form_type: form_type ?? ["RFAI"],
     is_amended,
     per_page: per_page ?? 20,
+    page,
   });
   return JSON.stringify(data, null, 2);
 }
@@ -45,6 +47,7 @@ export function registerFilingsTool(server: McpServer): void {
         .describe("Filing form types to filter on, e.g. [\"F3X\"]; defaults to [\"RFAI\"]"),
       is_amended: z.boolean().optional().describe("Filter to only amended (true) or only original (false) filings"),
       per_page: z.number().min(1).max(100).optional().describe("Results per page (default 20)"),
+      page: z.number().min(1).optional().describe("Page number for results beyond the first (default 1)"),
     },
     async (params) => {
       try {

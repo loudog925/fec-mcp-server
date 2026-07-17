@@ -48,4 +48,18 @@ describe("debts", () => {
     expect(calledUrl).toContain("creditor_debtor_name=Verizon");
     expect(calledUrl).not.toContain("committee_id=");
   });
+
+  it("passes page through to the schedule_d endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await debts({ committee_id: "C00401224", page: 3 });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("page=3");
+  });
 });

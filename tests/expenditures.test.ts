@@ -33,4 +33,18 @@ describe("itemizedExpenditures", () => {
     expect(calledUrl).toContain("committee_id=C00358796");
     expect(calledUrl).toContain("disbursement_description=media");
   });
+
+  it("passes page through to the schedule_b endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await itemizedExpenditures({ committee_id: ["C00358796"], page: 3 });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("page=3");
+  });
 });

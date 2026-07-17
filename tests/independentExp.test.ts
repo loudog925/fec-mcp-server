@@ -33,4 +33,18 @@ describe("independentExpenditures", () => {
     expect(calledUrl).toContain("candidate_id=S0OH00133");
     expect(calledUrl).toContain("support_oppose_indicator=O");
   });
+
+  it("passes page through to the schedule_e endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await independentExpenditures({ candidate_id: ["S0OH00133"], page: 3 });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("page=3");
+  });
 });

@@ -44,4 +44,18 @@ describe("committeeReports", () => {
     expect(calledUrl).toContain("is_amended=true");
     expect(calledUrl).not.toContain("most_recent=");
   });
+
+  it("passes page through to the reports endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await committeeReports({ committee_id: "C00401224", page: 3 });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("page=3");
+  });
 });

@@ -18,6 +18,7 @@ export interface CommitteeReportsParams {
   min_debts_owed_amount?: number;
   max_debts_owed_amount?: number;
   per_page?: number;
+  page?: number;
 }
 
 export async function committeeReports(params: CommitteeReportsParams): Promise<string> {
@@ -43,6 +44,7 @@ export async function committeeReports(params: CommitteeReportsParams): Promise<
       min_debts_owed_amount: params.min_debts_owed_amount,
       max_debts_owed_amount: params.max_debts_owed_amount,
       per_page: params.per_page ?? 20,
+      page: params.page,
     }
   );
   return JSON.stringify(data, null, 2);
@@ -71,6 +73,7 @@ export function registerCommitteeReportsTool(server: McpServer): void {
       min_debts_owed_amount: z.number().optional(),
       max_debts_owed_amount: z.number().optional(),
       per_page: z.number().min(1).max(100).optional().describe("Results per page (default 20)"),
+      page: z.number().min(1).optional().describe("Page number for results beyond the first (default 1)"),
     },
     async (params) => {
       try {

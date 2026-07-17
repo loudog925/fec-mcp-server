@@ -20,6 +20,7 @@ export interface DebtsParams {
   min_coverage_end_date?: string;
   max_coverage_end_date?: string;
   per_page?: number;
+  page?: number;
 }
 
 export async function debts(params: DebtsParams): Promise<string> {
@@ -45,6 +46,7 @@ export async function debts(params: DebtsParams): Promise<string> {
     min_coverage_end_date: params.min_coverage_end_date,
     max_coverage_end_date: params.max_coverage_end_date,
     per_page: params.per_page ?? 20,
+    page: params.page,
   });
   return JSON.stringify(data, null, 2);
 }
@@ -71,6 +73,7 @@ export function registerDebtsTool(server: McpServer): void {
       min_coverage_end_date: z.string().optional().describe("YYYY-MM-DD"),
       max_coverage_end_date: z.string().optional().describe("YYYY-MM-DD"),
       per_page: z.number().min(1).max(100).optional().describe("Results per page (default 20)"),
+      page: z.number().min(1).optional().describe("Page number for results beyond the first (default 1)"),
     },
     async (params) => {
       try {
