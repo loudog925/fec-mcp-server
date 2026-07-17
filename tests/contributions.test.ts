@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { itemizedContributions } from "../src/tools/contributions.js";
+import * as fecClient from "../src/fecClient.js";
 
 describe("itemizedContributions", () => {
   beforeEach(() => {
@@ -32,5 +33,19 @@ describe("itemizedContributions", () => {
     expect(calledUrl).toContain("/schedules/schedule_a/");
     expect(calledUrl).toContain("committee_id=C00358796");
     expect(calledUrl).toContain("min_amount=200");
+  });
+
+  it("uses a 60000ms timeout, since unnarrowed schedule_a queries have been observed taking ~26s upstream", async () => {
+    const fetchFECSpy = vi
+      .spyOn(fecClient, "fetchFEC")
+      .mockResolvedValue({ results: [] });
+
+    await itemizedContributions({ committee_id: ["C00358796"] });
+
+    expect(fetchFECSpy).toHaveBeenCalledWith(
+      "/schedules/schedule_a/",
+      expect.any(Object),
+      60000
+    );
   });
 });

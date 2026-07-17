@@ -2,6 +2,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fetchFEC } from "../fecClient.js";
 
+// Unnarrowed schedule_a queries (e.g. a common contributor_name with no
+// date range) have been observed taking ~26s upstream, leaving too little
+// margin under the default 30000ms timeout.
+const ITEMIZED_CONTRIBUTIONS_TIMEOUT_MS = 60000;
+
 export interface ItemizedContributionsParams {
   committee_id?: string[];
   contributor_name?: string;
@@ -24,18 +29,22 @@ export async function itemizedContributions(
       "Provide at least committee_id or contributor_name to search itemized contributions."
     );
   }
-  const data = await fetchFEC("/schedules/schedule_a/", {
-    committee_id: committee_id?.map((id) => id.toUpperCase()),
-    contributor_name,
-    contributor_state: params.contributor_state,
-    contributor_employer: params.contributor_employer,
-    contributor_occupation: params.contributor_occupation,
-    min_date: params.min_date,
-    max_date: params.max_date,
-    min_amount: params.min_amount,
-    max_amount: params.max_amount,
-    per_page: params.per_page ?? 20,
-  });
+  const data = await fetchFEC(
+    "/schedules/schedule_a/",
+    {
+      committee_id: committee_id?.map((id) => id.toUpperCase()),
+      contributor_name,
+      contributor_state: params.contributor_state,
+      contributor_employer: params.contributor_employer,
+      contributor_occupation: params.contributor_occupation,
+      min_date: params.min_date,
+      max_date: params.max_date,
+      min_amount: params.min_amount,
+      max_amount: params.max_amount,
+      per_page: params.per_page ?? 20,
+    },
+    ITEMIZED_CONTRIBUTIONS_TIMEOUT_MS
+  );
   return JSON.stringify(data, null, 2);
 }
 
