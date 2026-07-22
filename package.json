@@ -2,6 +2,7 @@
   "name": "fec-mcp-server",
   "version": "0.1.0",
   "description": "MCP server exposing live Federal Election Commission (FEC) data via the OpenFEC API",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

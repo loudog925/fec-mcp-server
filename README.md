@@ -10,7 +10,7 @@ see the separate `FECDownload` project.
 ## Setup
 
 1. Get a free FEC API key: https://api.open.fec.gov/developers/
-2. `git clone <this repo's URL>`
+2. `git clone https://github.com/loudog925/fec-mcp-server.git`
 3. `cd fec-mcp-server`
 4. `npm install`
 5. `npm run build`

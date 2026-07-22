@@ -34,13 +34,11 @@ Nearly every downstream tool wants a `candidate_id` or `committee_id`, not a nam
 
 ## 4. The `email` field — now exposed, but single-lookup only (fixed July 2026)
 
-**Status: patched.** `fec_committee_search` now returns `email` and `website`, along with much richer detail (separate `custodian_*` and `treasurer_*` blocks, full address) — **but only when called with a single `committee_id` as a direct lookup.** Confirmed: `fec_committee_search(committee_id=["C00919084"])` → `email: "TALARICO@MBACG.COM"`, `website: "JAMESTALARICO.COM"`.
+**Status: patched.** `fec_committee_search` now returns `email` and `website`, along with much richer detail (separate `custodian_*` and `treasurer_*` blocks, full address) — **but only when called with a single `committee_id` as a direct lookup.** Confirmed working via a live single-`committee_id` lookup, which returned populated `email`/`website` fields.
 
 **The limitation still stands for multi-result searches.** Calling with `q`/`treasurer_name`/`state` etc. (anything returning more than one committee) still omits `email`/`website` entirely — confirmed against a 32-result `treasurer_name` search, no email field present on any row. **Practical workflow:** find the candidate roster first via `treasurer_name`/`q` search, then loop each resulting `committee_id` through an individual single-ID lookup to pull emails one at a time. There's no batch/bulk email-fetch shortcut yet.
 
 **Why it matters:** committee emails are a strong secondary identifier for the compliance firm actually running the back office, often more reliable than street address (which can vary in formatting — "AVE" vs "AVENUE," "STE" vs "SUITE" vs "#," etc.).
-
-**Identified via this method:** the firm behind the 611 Pennsylvania Ave SE, Suite 143 address is **MBA Consulting Group (MBACG)**, legal name Mele, Brengarth & Associates, LLC — founded 2014, DC-based, ~43 employees. Principals: Steven Mele, Megan Brengarth, Chris Koob, Lauren DeCot (Lee). Public client list (InfluenceWatch) independently confirms Warnock for Georgia and Val Demings for Senate, matching FEC treasurer-of-record data.
 
 ## 5. `fec_loans` and `fec_debts` — now at full parity, both cross-committee searchable (updated July 2026)
 
@@ -51,7 +49,7 @@ Both Schedule-level tools now work the same way — either search within one com
 
 **Both tools embed the full nested committee object** (treasurer, designated agent, cycles_has_activity, address, etc.) on each result when searching cross-committee (i.e. without a `committee_id`) — richer than what `fec_donor_search`/`fec_spending_search` return, which only give a bare `committee_id`.
 
-**Practical use — vendor/creditor tracing across a firm's whole client roster:** this is now the fast path for exactly the kind of work done identifying MBACG's client list. Instead of iterating every known committee_id one at a time, you can go the other direction: pick a known vendor or law firm (e.g. Elias Law Group, a common Democratic election-law firm) and pull every committee that owes them money or borrowed from them in one call — a good cross-check for which campaigns share a compliance/legal vendor.
+**Practical use — vendor/creditor tracing across a firm's whole client roster:** instead of iterating every known committee_id one at a time, you can go the other direction: pick a known vendor or law firm and pull every committee that owes them money or borrowed from them in one call — a good cross-check for which campaigns share a compliance/legal vendor.
 
 **Volume caveat still applies:** cross-committee or long-history queries return large unbounded result sets (Elias Law Group: 607 total; DNC alone: 7,504 debt records). Both tools support date-bounding (`min/max_incurred_date`, `min/max_payment_to_date` for loans; `min/max_coverage_start/end_date`, `report_year` for debts) — use them rather than pulling full history when the entity is high-volume.
 
@@ -65,13 +63,13 @@ Both Schedule-level tools now work the same way — either search within one com
 
 **The embedded committee object (in cross-committee `fec_loans`/`fec_debts` results) carries useful status flags** you'd otherwise need a separate `fec_committee_search` call for: `is_active`, `cycles_has_activity`, `cycles_has_financial`, `last_cycle_has_activity`. Worth checking these before assuming a committee found via creditor/lender search is still a going concern.
 
-## 7. Firm structure pattern (general, not just MBACG)
+## 7. Firm structure pattern (general)
 
 Larger compliance firms often have **multiple treasurer-tier principals**, each running an independent client book, backed by a shared pool of junior staff who rotate across books as *designated agent* only (never treasurer-of-record). To map a firm's true footprint:
 
 1. Find one confirmed treasurer name at the firm's address.
 2. Search `treasurer_name` for that person to get their book.
-3. Check every *designated agent* name that shows up across those results — search each as `treasurer_name` too, since some will turn out to be treasurer-tier principals with their own separate book (this is how Mele, Koob, and Brengarth surfaced as additional principals beyond the initially-found DeCot Lee).
+3. Check every *designated agent* name that shows up across those results — search each as `treasurer_name` too, since some will turn out to be treasurer-tier principals with their own separate book.
 4. Staff who return zero committees as treasurer are agent-only — useful to note but not separate "clients" to track.
 
 ## 8. Pagination and direct candidate lookup — both fixed (July 2026)
