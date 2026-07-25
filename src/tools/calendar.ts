@@ -22,25 +22,101 @@ export interface CalendarParams {
   page?: number;
 }
 
+// /reporting-dates/, /election-dates/, and /calendar-dates/ each format
+// create_date/update_date differently (or omit them). Normalize to a bare
+// YYYY-MM-DD so callers don't need per-mode date parsing.
+function normalizeDate(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  return value.slice(0, 10);
+}
+
+interface ReportingDateRow {
+  due_date?: string;
+  report_type?: string;
+  report_type_full?: string;
+  report_year?: number;
+  create_date?: unknown;
+  update_date?: unknown;
+  [key: string]: unknown;
+}
+
+// /reporting-dates/ returns fully duplicate rows per due_date/report_type
+// combination with no filer-level discriminator field — collapse them to one
+// row per (due_date, report_type, report_type_full, report_year) group, and
+// surface how many raw rows were collapsed as filer_count, since a due date
+// shared by 92 filer types vs 1 is meaningfully different information.
+async function fetchDedupedFilingDeadlines(params: CalendarParams) {
+  const upstreamParams = {
+    min_due_date: params.min_date,
+    max_due_date: params.max_date,
+    report_type: params.report_type,
+    report_year: params.report_year,
+  };
+
+  const firstPage = (await fetchFEC("/reporting-dates/", {
+    ...upstreamParams,
+    per_page: 100,
+    page: 1,
+  })) as { results?: ReportingDateRow[]; pagination?: { count?: number; pages?: number } };
+
+  const allRows: ReportingDateRow[] = [...(firstPage.results ?? [])];
+  const totalPages = firstPage.pagination?.pages ?? 1;
+  for (let page = 2; page <= totalPages; page++) {
+    const next = (await fetchFEC("/reporting-dates/", {
+      ...upstreamParams,
+      per_page: 100,
+      page,
+    })) as { results?: ReportingDateRow[] };
+    allRows.push(...(next.results ?? []));
+  }
+
+  const groups = new Map<string, { row: ReportingDateRow; filer_count: number }>();
+  for (const row of allRows) {
+    const key = JSON.stringify([row.due_date, row.report_type, row.report_type_full, row.report_year]);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.filer_count++;
+    } else {
+      groups.set(key, {
+        row: {
+          ...row,
+          create_date: normalizeDate(row.create_date),
+          update_date: normalizeDate(row.update_date),
+        },
+        filer_count: 1,
+      });
+    }
+  }
+
+  const deduped = [...groups.values()].map(({ row, filer_count }) => ({ ...row, filer_count }));
+  const per_page = params.per_page ?? 20;
+  const page = params.page ?? 1;
+  const start = (page - 1) * per_page;
+  const pageResults = deduped.slice(start, start + per_page);
+
+  return {
+    results: pageResults,
+    pagination: {
+      page,
+      pages: Math.ceil(deduped.length / per_page) || 1,
+      per_page,
+      count: deduped.length,
+    },
+  };
+}
+
 export async function calendar(params: CalendarParams): Promise<string> {
   const mode = params.mode ?? "events";
   const per_page = params.per_page ?? 20;
   const page = params.page;
 
   if (mode === "filing_deadlines") {
-    const data = await fetchFEC("/reporting-dates/", {
-      min_due_date: params.min_date,
-      max_due_date: params.max_date,
-      report_type: params.report_type,
-      report_year: params.report_year,
-      per_page,
-      page,
-    });
+    const data = await fetchDedupedFilingDeadlines(params);
     return JSON.stringify(data, null, 2);
   }
 
   if (mode === "election_dates") {
-    const data = await fetchFEC("/election-dates/", {
+    const data = (await fetchFEC("/election-dates/", {
       min_election_date: params.min_date,
       max_election_date: params.max_date,
       election_state: params.state,
@@ -48,7 +124,14 @@ export async function calendar(params: CalendarParams): Promise<string> {
       election_year: params.election_year,
       per_page,
       page,
-    });
+    })) as { results?: Array<{ create_date?: unknown; update_date?: unknown; [key: string]: unknown }> };
+    if (Array.isArray(data.results)) {
+      data.results = data.results.map((r) => ({
+        ...r,
+        create_date: normalizeDate(r.create_date),
+        update_date: normalizeDate(r.update_date),
+      }));
+    }
     return JSON.stringify(data, null, 2);
   }
 
