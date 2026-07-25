@@ -77,6 +77,9 @@ is only used when you run `node dist/index.js` yourself.
 | `fec_donor_search` | Find a donor's contributions across all committees |
 | `fec_spending_search` | Find spending by vendor/description across all committees |
 | `fec_filings` | A candidate's or committee's filings by form type (RFAIs, quarterly reports, etc.) or amendment status |
+| `fec_elections` | Candidates in a race with financial totals, or an aggregate race summary; supports zip-based lookups |
+| `fec_calendar` | FEC calendar events, report filing deadlines, or election dates |
+| `fec_legal_search` | Search advisory opinions, enforcement cases (MURs), ADRs, administrative fines, and statutes |
 
 Every search tool accepts `per_page` (max 100) and `page` to walk result sets beyond the first page.
 
@@ -87,6 +90,10 @@ endpoint-specific tiebreaker field (`last_contribution_receipt_amount` for Sched
 These come from the previous response's `pagination.last_indexes` object — pass them back
 on the next call instead of `page` when paging deep into a large result set, since FEC's
 offset-based `page` pagination isn't reliable past the first several thousand records.
+
+`fec_legal_search` is the one exception to the `per_page`/`page` convention — it uses the
+FEC legal search endpoint's own `from_hit` (0-indexed offset) and `hits_returned` (max 200)
+params instead.
 
 ## Testing
 
