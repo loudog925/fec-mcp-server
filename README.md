@@ -97,6 +97,16 @@ reliable past the first several thousand records. Verified against live response
 FEC legal search endpoint's own `from_hit` (0-indexed offset) and `hits_returned` (max 200)
 params instead.
 
+`fec_calendar`'s `filing_deadlines` mode deduplicates upstream results: FEC's
+`/reporting-dates/` endpoint returns fully duplicate rows per
+`(due_date, report_type, report_type_full, report_year)` combination with no
+filer-level discriminator field. The tool collapses each group to one row and adds a
+`filer_count` field (how many raw rows were collapsed into it) rather than surfacing
+raw duplicates — `pagination.count` reflects the deduped total, not FEC's raw count.
+`create_date`/`update_date` are also normalized to bare `YYYY-MM-DD` across
+`election_dates` and `filing_deadlines` modes (upstream formats differ per mode); see
+`FEC_MCP_NOTES.md` section 9 for details and live-verified numbers.
+
 ## Testing
 
 ```powershell
@@ -139,3 +149,14 @@ If every tool fails, not just one, work through these in order:
    no `committee_id`) has been observed taking ~26s upstream — the tool
    uses a 60s timeout to give headroom, but a `min_date`/`max_date` range
    will make it faster and more reliable.
+
+## Acknowledgments
+
+`fec_elections`, `fec_calendar`, and `fec_legal_search` — and the endpoint-specific
+keyset pagination approach for Schedule A/B/E — were designed after studying
+[cyanheads/openfec-mcp-server](https://github.com/cyanheads/openfec-mcp-server), which
+covers this same OpenFEC API surface with a different tool/parameter design. Param
+mappings (office code → full word, calendar category IDs, legal search field names)
+and the legal-document payload-trimming approach are adapted from that project; this
+server's implementations, param shapes, and tests were written independently rather
+than copied.
