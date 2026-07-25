@@ -47,4 +47,23 @@ describe("spendingSearch", () => {
     const calledUrl = fetchMock.mock.calls[0][0] as string;
     expect(calledUrl).toContain("page=3");
   });
+
+  it("passes last_index/last_disbursement_amount through to the schedule_b endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await spendingSearch({
+      recipient_name: "Acme",
+      last_index: "4041720221492367184",
+      last_disbursement_amount: 5000,
+    });
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("last_index=4041720221492367184");
+    expect(calledUrl).toContain("last_disbursement_amount=5000");
+  });
 });

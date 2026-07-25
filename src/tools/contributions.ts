@@ -19,6 +19,8 @@ export interface ItemizedContributionsParams {
   max_amount?: number;
   per_page?: number;
   page?: number;
+  last_index?: string;
+  last_contribution_receipt_amount?: number;
 }
 
 export async function itemizedContributions(
@@ -44,6 +46,8 @@ export async function itemizedContributions(
       max_amount: params.max_amount,
       per_page: params.per_page ?? 20,
       page: params.page,
+      last_index: params.last_index,
+      last_contribution_receipt_amount: params.last_contribution_receipt_amount,
     },
     ITEMIZED_CONTRIBUTIONS_TIMEOUT_MS
   );
@@ -66,6 +70,18 @@ export function registerItemizedContributionsTool(server: McpServer): void {
       max_amount: z.number().optional(),
       per_page: z.number().min(1).max(100).optional().describe("Results per page (default 20)"),
       page: z.number().min(1).optional().describe("Page number for results beyond the first (default 1)"),
+      last_index: z
+        .string()
+        .optional()
+        .describe(
+          "Cursor from the previous response's pagination.last_indexes.last_index, for paging deeper into large result sets than `page` can reliably reach"
+        ),
+      last_contribution_receipt_amount: z
+        .number()
+        .optional()
+        .describe(
+          "Cursor from the previous response's pagination.last_indexes.last_contribution_receipt_amount; pass alongside last_index"
+        ),
     },
     async (params) => {
       try {

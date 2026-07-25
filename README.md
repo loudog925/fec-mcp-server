@@ -80,6 +80,14 @@ is only used when you run `node dist/index.js` yourself.
 
 Every search tool accepts `per_page` (max 100) and `page` to walk result sets beyond the first page.
 
+`fec_itemized_contributions`, `fec_itemized_expenditures`, `fec_independent_expenditures`,
+`fec_donor_search`, and `fec_spending_search` additionally accept `last_index` plus an
+endpoint-specific tiebreaker field (`last_contribution_receipt_amount` for Schedule A,
+`last_disbursement_amount` for Schedule B, `last_expenditure_amount` for Schedule E).
+These come from the previous response's `pagination.last_indexes` object — pass them back
+on the next call instead of `page` when paging deep into a large result set, since FEC's
+offset-based `page` pagination isn't reliable past the first several thousand records.
+
 ## Testing
 
 ```powershell
