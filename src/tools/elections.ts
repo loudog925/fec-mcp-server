@@ -59,14 +59,17 @@ export async function elections(params: ElectionsParams): Promise<string> {
       district,
       election_full,
     })) as { independent_expenditures_note?: string; [key: string]: unknown };
-    // Observed live: this aggregate can be off by orders of magnitude (e.g.
-    // trillions of dollars for a single race) because it double-counts
-    // across overlapping reporting periods upstream. Flag it rather than
-    // let callers treat it as a reliable dollar figure.
+    // Observed live (2024 presidential race): this field came back around
+    // $17T, off by many orders of magnitude from the receipts/disbursements
+    // figures in the same response. FEC's /elections/summary/ appears to sum
+    // this number across overlapping report periods rather than deduping by
+    // transaction, so it grows with report count rather than reflecting real
+    // spending. Flag it so callers don't quote it as a dollar figure.
     data.independent_expenditures_note =
-      "The independent_expenditures aggregate here is unreconciled upstream and may be" +
-      " wildly inflated due to double-counting across reporting periods. For a verified" +
-      " figure, use fec_independent_expenditures for the race's candidates instead.";
+      "independent_expenditures on this summary has been observed at values many orders" +
+      " of magnitude too large (e.g. ~$17T for a single 2024 race), likely from summing" +
+      " across overlapping report periods rather than distinct transactions. Do not treat" +
+      " it as real spending — use fec_independent_expenditures for a per-transaction total instead.";
     return JSON.stringify(data, null, 2);
   }
 

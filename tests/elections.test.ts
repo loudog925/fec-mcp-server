@@ -79,7 +79,7 @@ describe("elections", () => {
     expect(calledUrl).toContain("office=president");
   });
 
-  it("flags the independent_expenditures aggregate as unreconciled in summary mode", async () => {
+  it("flags the independent_expenditures aggregate as unreliable in summary mode", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -90,6 +90,6 @@ describe("elections", () => {
     const result = await elections({ office: "P", cycle: 2024, mode: "summary" });
     const parsed = JSON.parse(result);
 
-    expect(parsed.independent_expenditures_note).toContain("unreconciled");
+    expect(parsed.independent_expenditures_note).toContain("orders of magnitude too large");
   });
 });
