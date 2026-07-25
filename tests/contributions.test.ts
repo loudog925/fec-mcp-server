@@ -49,7 +49,7 @@ describe("itemizedContributions", () => {
     expect(calledUrl).toContain("page=3");
   });
 
-  it("passes last_index/last_contribution_receipt_amount through to the schedule_a endpoint", async () => {
+  it("passes last_index/last_contribution_receipt_date through to the schedule_a endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -60,12 +60,12 @@ describe("itemizedContributions", () => {
     await itemizedContributions({
       committee_id: ["C00358796"],
       last_index: "4041720221492367184",
-      last_contribution_receipt_amount: 500,
+      last_contribution_receipt_date: "2024-10-02",
     });
 
     const calledUrl = fetchMock.mock.calls[0][0] as string;
     expect(calledUrl).toContain("last_index=4041720221492367184");
-    expect(calledUrl).toContain("last_contribution_receipt_amount=500");
+    expect(calledUrl).toContain("last_contribution_receipt_date=2024-10-02");
   });
 
   it("uses a 60000ms timeout, since unnarrowed schedule_a queries have been observed taking ~26s upstream", async () => {

@@ -56,6 +56,30 @@ function trimLegalDoc(doc: LegalDoc): LegalDoc {
   return d;
 }
 
+// Unlike every other FEC endpoint this server wraps, /legal/search/ does NOT
+// return {results: [...]}. It returns a per-type envelope —
+// {advisory_opinions: [...], murs: [...], adrs: [...], admin_fines: [...],
+// statutes: [...], total_all, total_<type>} — since a query can span multiple
+// document types at once. Flatten it into a single tagged list so callers get
+// a consistent shape.
+interface LegalSearchEnvelope {
+  advisory_opinions?: LegalDoc[];
+  murs?: LegalDoc[];
+  adrs?: LegalDoc[];
+  admin_fines?: LegalDoc[];
+  statutes?: LegalDoc[];
+  total_all?: number;
+  [key: string]: unknown;
+}
+
+const DOCUMENT_TYPE_KEYS: Array<[keyof LegalSearchEnvelope, string]> = [
+  ["advisory_opinions", "advisory_opinion"],
+  ["murs", "mur"],
+  ["adrs", "adr"],
+  ["admin_fines", "admin_fine"],
+  ["statutes", "statute"],
+];
+
 export async function legalSearch(params: LegalSearchParams): Promise<string> {
   const hasFilter =
     params.query ||
@@ -71,7 +95,7 @@ export async function legalSearch(params: LegalSearchParams): Promise<string> {
     );
   }
 
-  const data = (await fetchFEC("/legal/search/", {
+  const envelope = (await fetchFEC("/legal/search/", {
     q: params.query,
     type: params.type,
     ao_no: params.ao_number,
@@ -85,12 +109,23 @@ export async function legalSearch(params: LegalSearchParams): Promise<string> {
     max_date: params.max_date,
     from_hit: params.from_hit ?? 0,
     hits_returned: params.hits_returned ?? 20,
-  })) as { results?: LegalDoc[]; [key: string]: unknown };
+  })) as LegalSearchEnvelope;
 
-  if (Array.isArray(data.results)) {
-    data.results = data.results.map(trimLegalDoc);
+  const results: LegalDoc[] = [];
+  for (const [key, documentType] of DOCUMENT_TYPE_KEYS) {
+    const docs = envelope[key];
+    if (Array.isArray(docs)) {
+      for (const doc of docs) {
+        results.push(trimLegalDoc({ ...doc, document_type: documentType }));
+      }
+    }
   }
-  return JSON.stringify(data, null, 2);
+
+  return JSON.stringify(
+    { results, total_count: envelope.total_all ?? results.length },
+    null,
+    2
+  );
 }
 
 export function registerLegalSearchTool(server: McpServer): void {

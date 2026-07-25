@@ -12,7 +12,11 @@ describe("legalSearch", () => {
   });
 
   it("calls /legal/search/ with mapped param names", async () => {
-    const mockResponse = { results: [{ ao_no: "2024-01", name: "Example AO" }] };
+    // /legal/search/ returns a per-type envelope, not {results: [...]}.
+    const mockResponse = {
+      advisory_opinions: [{ ao_no: "2024-01", name: "Example AO" }],
+      total_all: 1,
+    };
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -20,7 +24,7 @@ describe("legalSearch", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await legalSearch({
+    const result = await legalSearch({
       query: "coordinated spending",
       type: "advisory_opinions",
       respondent: "Acme PAC",
@@ -35,11 +39,40 @@ describe("legalSearch", () => {
     expect(calledUrl).toContain("ao_regulatory_citation=11");
     expect(calledUrl).toContain("from_hit=0");
     expect(calledUrl).toContain("hits_returned=20");
+
+    const parsed = JSON.parse(result);
+    expect(parsed.total_count).toBe(1);
+    expect(parsed.results).toEqual([
+      { ao_no: "2024-01", name: "Example AO", document_type: "advisory_opinion" },
+    ]);
+  });
+
+  it("flattens multiple document types from the envelope into one tagged results list", async () => {
+    const mockResponse = {
+      advisory_opinions: [{ ao_no: "2024-01" }],
+      murs: [{ case_no: "MUR-1234" }],
+      total_all: 2,
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await legalSearch({ query: "test" });
+    const parsed = JSON.parse(result);
+
+    expect(parsed.results).toEqual([
+      { ao_no: "2024-01", document_type: "advisory_opinion" },
+      { case_no: "MUR-1234", document_type: "mur" },
+    ]);
+    expect(parsed.total_count).toBe(2);
   });
 
   it("trims oversized highlights, documents, and commission_votes before returning", async () => {
     const mockResponse = {
-      results: [
+      murs: [
         {
           case_no: "MUR-1234",
           highlights: ["a", "b", "c", "d", "e"],

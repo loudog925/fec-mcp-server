@@ -13,7 +13,7 @@ export interface IndependentExpendituresParams {
   per_page?: number;
   page?: number;
   last_index?: string;
-  last_expenditure_amount?: number;
+  last_expenditure_date?: string;
 }
 
 export async function independentExpenditures(
@@ -36,7 +36,7 @@ export async function independentExpenditures(
     per_page: params.per_page ?? 20,
     page: params.page,
     last_index: params.last_index,
-    last_expenditure_amount: params.last_expenditure_amount,
+    last_expenditure_date: params.last_expenditure_date,
   });
   return JSON.stringify(data, null, 2);
 }
@@ -64,11 +64,11 @@ export function registerIndependentExpendituresTool(server: McpServer): void {
         .describe(
           "Cursor from the previous response's pagination.last_indexes.last_index, for paging deeper into large result sets than `page` can reliably reach"
         ),
-      last_expenditure_amount: z
-        .number()
+      last_expenditure_date: z
+        .string()
         .optional()
         .describe(
-          "Cursor from the previous response's pagination.last_indexes.last_expenditure_amount; pass alongside last_index"
+          "Cursor from the previous response's pagination.last_indexes.last_expenditure_date; pass alongside last_index"
         ),
     },
     async (params) => {

@@ -48,7 +48,7 @@ describe("itemizedExpenditures", () => {
     expect(calledUrl).toContain("page=3");
   });
 
-  it("passes last_index/last_disbursement_amount through to the schedule_b endpoint", async () => {
+  it("passes last_index/last_disbursement_date through to the schedule_b endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -59,11 +59,11 @@ describe("itemizedExpenditures", () => {
     await itemizedExpenditures({
       committee_id: ["C00358796"],
       last_index: "4041720221492367184",
-      last_disbursement_amount: 5000,
+      last_disbursement_date: "2024-10-02",
     });
 
     const calledUrl = fetchMock.mock.calls[0][0] as string;
     expect(calledUrl).toContain("last_index=4041720221492367184");
-    expect(calledUrl).toContain("last_disbursement_amount=5000");
+    expect(calledUrl).toContain("last_disbursement_date=2024-10-02");
   });
 });

@@ -48,7 +48,7 @@ describe("independentExpenditures", () => {
     expect(calledUrl).toContain("page=3");
   });
 
-  it("passes last_index/last_expenditure_amount through to the schedule_e endpoint", async () => {
+  it("passes last_index/last_expenditure_date through to the schedule_e endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -59,11 +59,11 @@ describe("independentExpenditures", () => {
     await independentExpenditures({
       candidate_id: ["S0OH00133"],
       last_index: "4041720221492367184",
-      last_expenditure_amount: 250000,
+      last_expenditure_date: "2024-10-31",
     });
 
     const calledUrl = fetchMock.mock.calls[0][0] as string;
     expect(calledUrl).toContain("last_index=4041720221492367184");
-    expect(calledUrl).toContain("last_expenditure_amount=250000");
+    expect(calledUrl).toContain("last_expenditure_date=2024-10-31");
   });
 });

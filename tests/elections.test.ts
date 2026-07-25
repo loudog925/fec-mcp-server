@@ -78,4 +78,18 @@ describe("elections", () => {
     expect(calledUrl).toContain("/elections/summary/?");
     expect(calledUrl).toContain("office=president");
   });
+
+  it("flags the independent_expenditures aggregate as unreconciled in summary mode", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ receipts: 100, independent_expenditures: 999999999999 }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await elections({ office: "P", cycle: 2024, mode: "summary" });
+    const parsed = JSON.parse(result);
+
+    expect(parsed.independent_expenditures_note).toContain("unreconciled");
+  });
 });

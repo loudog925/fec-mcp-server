@@ -49,7 +49,7 @@ describe("donorSearch", () => {
     expect(calledUrl).toContain("page=3");
   });
 
-  it("passes last_index/last_contribution_receipt_amount through to the schedule_a endpoint", async () => {
+  it("passes last_index/last_contribution_receipt_date through to the schedule_a endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -60,11 +60,11 @@ describe("donorSearch", () => {
     await donorSearch({
       contributor_name: "John Smith",
       last_index: "4041720221492367184",
-      last_contribution_receipt_amount: 500,
+      last_contribution_receipt_date: "2024-10-02",
     });
 
     const calledUrl = fetchMock.mock.calls[0][0] as string;
     expect(calledUrl).toContain("last_index=4041720221492367184");
-    expect(calledUrl).toContain("last_contribution_receipt_amount=500");
+    expect(calledUrl).toContain("last_contribution_receipt_date=2024-10-02");
   });
 });

@@ -16,7 +16,7 @@ export interface DonorSearchParams {
   per_page?: number;
   page?: number;
   last_index?: string;
-  last_contribution_receipt_amount?: number;
+  last_contribution_receipt_date?: string;
 }
 
 export async function donorSearch(params: DonorSearchParams): Promise<string> {
@@ -37,7 +37,7 @@ export async function donorSearch(params: DonorSearchParams): Promise<string> {
       per_page: params.per_page ?? 20,
       page: params.page,
       last_index: params.last_index,
-      last_contribution_receipt_amount: params.last_contribution_receipt_amount,
+      last_contribution_receipt_date: params.last_contribution_receipt_date,
     },
     DONOR_SEARCH_TIMEOUT_MS
   );
@@ -65,11 +65,11 @@ export function registerDonorSearchTool(server: McpServer): void {
         .describe(
           "Cursor from the previous response's pagination.last_indexes.last_index, for paging deeper into large result sets than `page` can reliably reach"
         ),
-      last_contribution_receipt_amount: z
-        .number()
+      last_contribution_receipt_date: z
+        .string()
         .optional()
         .describe(
-          "Cursor from the previous response's pagination.last_indexes.last_contribution_receipt_amount; pass alongside last_index"
+          "Cursor from the previous response's pagination.last_indexes.last_contribution_receipt_date; pass alongside last_index"
         ),
     },
     async (params) => {

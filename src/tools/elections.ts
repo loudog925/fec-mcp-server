@@ -52,13 +52,21 @@ export async function elections(params: ElectionsParams): Promise<string> {
   const election_full = params.election_full ?? true;
 
   if (mode === "summary") {
-    const data = await fetchFEC("/elections/summary/", {
+    const data = (await fetchFEC("/elections/summary/", {
       office: office_full,
       cycle,
       state,
       district,
       election_full,
-    });
+    })) as { independent_expenditures_note?: string; [key: string]: unknown };
+    // Observed live: this aggregate can be off by orders of magnitude (e.g.
+    // trillions of dollars for a single race) because it double-counts
+    // across overlapping reporting periods upstream. Flag it rather than
+    // let callers treat it as a reliable dollar figure.
+    data.independent_expenditures_note =
+      "The independent_expenditures aggregate here is unreconciled upstream and may be" +
+      " wildly inflated due to double-counting across reporting periods. For a verified" +
+      " figure, use fec_independent_expenditures for the race's candidates instead.";
     return JSON.stringify(data, null, 2);
   }
 

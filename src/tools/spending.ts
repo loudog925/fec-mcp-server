@@ -14,7 +14,7 @@ export interface SpendingSearchParams {
   per_page?: number;
   page?: number;
   last_index?: string;
-  last_disbursement_amount?: number;
+  last_disbursement_date?: string;
 }
 
 export async function spendingSearch(params: SpendingSearchParams): Promise<string> {
@@ -35,7 +35,7 @@ export async function spendingSearch(params: SpendingSearchParams): Promise<stri
       per_page: params.per_page ?? 20,
       page: params.page,
       last_index: params.last_index,
-      last_disbursement_amount: params.last_disbursement_amount,
+      last_disbursement_date: params.last_disbursement_date,
     },
     SPENDING_SEARCH_TIMEOUT_MS
   );
@@ -61,11 +61,11 @@ export function registerSpendingSearchTool(server: McpServer): void {
         .describe(
           "Cursor from the previous response's pagination.last_indexes.last_index, for paging deeper into large result sets than `page` can reliably reach"
         ),
-      last_disbursement_amount: z
-        .number()
+      last_disbursement_date: z
+        .string()
         .optional()
         .describe(
-          "Cursor from the previous response's pagination.last_indexes.last_disbursement_amount; pass alongside last_index"
+          "Cursor from the previous response's pagination.last_indexes.last_disbursement_date; pass alongside last_index"
         ),
     },
     async (params) => {
