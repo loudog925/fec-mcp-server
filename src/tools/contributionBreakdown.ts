@@ -63,11 +63,62 @@ function summarizeSizeProfile(rows: SizeRow[]): Array<{
   }));
 }
 
+interface StateRow {
+  committee_id?: string;
+  cycle?: number;
+  state?: string;
+  total?: unknown;
+  [key: string]: unknown;
+}
+
+// The recurring question for by_state is usually binary -- how much is home-state
+// vs. everywhere-else money -- not the full per-state table. Deliberately not
+// inferred from the committee's own registered address (committee.state): that's a
+// compliance-firm mailing address which can differ from the race's actual state
+// (particularly for House seats, where district matters too), so this only computes
+// anything when the caller supplies home_state explicitly -- e.g. from a candidate
+// lookup's office/state fields, which is the semantically correct source.
+function summarizeGeography(
+  rows: StateRow[],
+  homeState: string
+): Array<{
+  committee_id?: string;
+  cycle?: number;
+  total: number;
+  in_state_total: number;
+  in_state_share: number | null;
+  out_of_state_total: number;
+  out_of_state_share: number | null;
+}> {
+  const upperHomeState = homeState.toUpperCase();
+  const groups = new Map<
+    string,
+    { committee_id?: string; cycle?: number; total: number; in_state_total: number; out_of_state_total: number }
+  >();
+  for (const row of rows) {
+    const key = `${row.committee_id ?? ""}::${row.cycle ?? ""}`;
+    const entry =
+      groups.get(key) ??
+      { committee_id: row.committee_id, cycle: row.cycle, total: 0, in_state_total: 0, out_of_state_total: 0 };
+    const amount = num(row.total);
+    entry.total += amount;
+    if ((row.state ?? "").toUpperCase() === upperHomeState) entry.in_state_total += amount;
+    else entry.out_of_state_total += amount;
+    groups.set(key, entry);
+  }
+  return [...groups.values()].map((g) => ({
+    ...g,
+    in_state_share: g.total !== 0 ? g.in_state_total / g.total : null,
+    out_of_state_share: g.total !== 0 ? g.out_of_state_total / g.total : null,
+  }));
+}
+
 export interface ContributionBreakdownParams {
   mode: "by_state" | "by_employer" | "by_occupation" | "by_size";
   committee_id: string[];
   cycle?: number[];
   state?: string[];
+  home_state?: string;
   employer?: string[];
   occupation?: string[];
   size?: (typeof SIZE_BUCKETS)[number][];
@@ -107,6 +158,11 @@ export async function contributionBreakdown(params: ContributionBreakdownParams)
     const size_profile_by_group = summarizeSizeProfile(typed.results ?? []);
     return JSON.stringify({ ...typed, size_profile_by_group }, null, 2);
   }
+  if (mode === "by_state" && params.home_state) {
+    const typed = data as { results?: StateRow[] };
+    const geographic_summary_by_group = summarizeGeography(typed.results ?? [], params.home_state);
+    return JSON.stringify({ ...typed, geographic_summary_by_group }, null, 2);
+  }
   return JSON.stringify(data, null, 2);
 }
 
@@ -124,7 +180,11 @@ export function registerContributionBreakdownTool(server: McpServer): void {
       "\"not itemized-small,\" not a claim about donors at their legal contribution " +
       "cap — the 2025-2026 per-election individual limit is $3,500 ($7,000/cycle " +
       "across primary and general), which this tool cannot check without paging " +
-      "raw Schedule A rows by contributor.",
+      "raw Schedule A rows by contributor. by_state mode returns " +
+      "geographic_summary_by_group (in_state vs. out_of_state totals/shares) when " +
+      "home_state is supplied — deliberately not inferred from the committee's own " +
+      "registered address, since a compliance firm's mailing address can differ from " +
+      "the race's actual state; pass the candidate's office state instead.",
     {
       mode: z
         .enum(["by_state", "by_employer", "by_occupation", "by_size"])
@@ -132,6 +192,14 @@ export function registerContributionBreakdownTool(server: McpServer): void {
       committee_id: z.array(z.string()).min(1).describe("FEC committee IDs, e.g. [\"C00401224\"]"),
       cycle: z.array(z.number()).optional().describe("Two-year election cycles, e.g. [2024]"),
       state: z.array(z.string()).optional().describe("Filter to specific two-letter state codes (by_state mode only)"),
+      home_state: z
+        .string()
+        .length(2)
+        .optional()
+        .describe(
+          "The race's home state, e.g. the candidate's office state (by_state mode only). When " +
+            "supplied, adds geographic_summary_by_group: in-state vs. out-of-state totals and shares."
+        ),
       hide_null: z.boolean().optional().describe("Omit rows with no resolvable state (by_state mode only)"),
       employer: z.array(z.string()).optional().describe("Filter to specific employer names (by_employer mode only)"),
       occupation: z.array(z.string()).optional().describe("Filter to specific occupations (by_occupation mode only)"),

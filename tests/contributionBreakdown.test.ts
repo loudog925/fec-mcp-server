@@ -138,6 +138,51 @@ describe("contributionBreakdown", () => {
     expect(stateResult.size_profile_by_group).toBeUndefined();
   });
 
+  it("computes geographic_summary_by_group only when home_state is supplied for by_state mode", async () => {
+    const mockResponse = {
+      results: [
+        { committee_id: "C00718866", cycle: 2026, state: "GA", total: 300 },
+        { committee_id: "C00718866", cycle: 2026, state: "NY", total: 700 },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => mockResponse })
+    );
+
+    const withoutHomeState = JSON.parse(
+      await contributionBreakdown({ mode: "by_state", committee_id: ["C00718866"] })
+    );
+    expect(withoutHomeState.geographic_summary_by_group).toBeUndefined();
+
+    const withHomeState = JSON.parse(
+      await contributionBreakdown({ mode: "by_state", committee_id: ["C00718866"], home_state: "ga" })
+    );
+    expect(withHomeState.geographic_summary_by_group).toEqual([
+      {
+        committee_id: "C00718866",
+        cycle: 2026,
+        total: 1000,
+        in_state_total: 300,
+        in_state_share: 0.3,
+        out_of_state_total: 700,
+        out_of_state_share: 0.7,
+      },
+    ]);
+  });
+
+  it("does not attach geographic_summary_by_group to other modes even if home_state is passed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ results: [] }) })
+    );
+
+    const result = JSON.parse(
+      await contributionBreakdown({ mode: "by_employer", committee_id: ["C00718866"], home_state: "GA" })
+    );
+    expect(result.geographic_summary_by_group).toBeUndefined();
+  });
+
   it("passes cycle and page through", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

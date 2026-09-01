@@ -106,6 +106,8 @@ interface ReportSummary {
   effective_cash_position: number;
   headline_burn_rate: number | null;
   cash_accumulation: number;
+  receipts_per_day: number | null;
+  disbursements_per_day: number | null;
   fundraising: {
     label: string;
     fundraising_receipts: number;
@@ -139,11 +141,13 @@ function summarizeReport(report: ReportRow): ReportSummary {
       }
     : null;
 
+  const coverageDays = daysBetween(report.coverage_start_date, report.coverage_end_date);
+
   return {
     report_type: report.report_type,
     coverage_start_date: report.coverage_start_date,
     coverage_end_date: report.coverage_end_date,
-    coverage_days: daysBetween(report.coverage_start_date, report.coverage_end_date),
+    coverage_days: coverageDays,
     cash_on_hand_beginning_period: cashBeginning,
     cash_on_hand_end_period: cashEnd,
     total_receipts_period: receipts,
@@ -153,6 +157,11 @@ function summarizeReport(report: ReportRow): ReportSummary {
     effective_cash_position: cashEnd - debtsOwedBy,
     headline_burn_rate: receipts !== 0 ? disbursements / receipts : null,
     cash_accumulation: cashEnd - cashBeginning,
+    // Normalizes for comparing periods of different lengths (e.g. a 12-day
+    // pre-primary report against a full quarter) -- see period_length_mismatch
+    // on the change table below, which flags exactly when this matters.
+    receipts_per_day: coverageDays ? receipts / coverageDays : null,
+    disbursements_per_day: coverageDays ? disbursements / coverageDays : null,
     fundraising,
   };
 }
@@ -408,7 +417,9 @@ export function registerFilingReviewTool(server: McpServer): void {
     "fec_filing_review",
     "Run a structured 'first 15 minutes' review of a committee's most recent FEC filing: " +
       "the seven summary numbers (cash, receipts, disbursements, debt, effective cash " +
-      "position), a change table against prior reports, the candidate's committee " +
+      "position) plus receipts/disbursements per day of the coverage period (for " +
+      "comparing periods of different lengths, e.g. a 12-day pre-primary report vs. a " +
+      "full quarter), a change table against prior reports, the candidate's committee " +
       "ecosystem (JFCs/leadership PAC/other authorized committees), and — for principal " +
       "campaign committees — a check on whether the primary election has already " +
       "happened as of this report. Returns structured evidence and caveats for the " +

@@ -407,23 +407,43 @@ Delivers §1, §2, §3, §9, §10, §11, §14, §18 (minus top-10), and the prim
 principle. This is arithmetic over one `/committee/{id}/reports/` response plus already
 wrapped tools, and it's fully unit-testable against fixtures with no network.
 
-**Phase 2 — wrap the aggregates**, then steps 4, 5 and 7. Unlocks §4's clustering, §6's
-categories, §16's outside spending. This is where most remaining primer value sits.
+**Phase 2 — wrap the aggregates**, then steps 4, 5 and 7. Unlocks §4's clustering and
+§6/§7's spending categorization. This is where most of the remaining in-scope primer
+value sits.
 
 - **§4 (contribution clustering) and part of §6/§7 (spending by purpose/recipient): done**,
   as `fec_contribution_breakdown` (`by_state`/`by_employer`/`by_occupation`/`by_size`) and
   `fec_spending_breakdown` (`by_purpose`/`by_recipient`) — `src/tools/contributionBreakdown.ts`,
   `src/tools/spendingBreakdown.ts`. `by_purpose` mode computes `unclassified_share_by_group`
   per the §0.3 Layer 3 requirement (live-verified: 35% of Ossoff 2026's disbursements fall
-  in FEC's own `OTHER` bucket). **Not built**: the §0.3 Layer 2 rules-based sub-classifier
-  that would split FEC's 12 coarse categories into the primer's finer functional
-  categories (Digital vs Media, Field vs Payroll) — these tools expose FEC's own
-  categories as-is.
-- **§16 (outside spending — schedule_e/by_candidate, electioneering, communication costs,
-  Schedule F): not yet built.**
+  in FEC's own `OTHER` bucket). `by_size` mode computes `size_profile_by_group`
+  (grassroots vs. large-dollar share) and `by_state` mode computes
+  `geographic_summary_by_group` (in-state vs. out-of-state, when `home_state` is
+  supplied) — both from the legacy-report gap analysis above, live-verified against
+  Ossoff 2026 (69% grassroots, 21% in-state). `fec_filing_review`'s report summaries
+  also carry `receipts_per_day`/`disbursements_per_day` now, from the same gap analysis.
+- **Deferred, on purpose**: the §0.3 Layer 2 rules-based sub-classifier that would split
+  FEC's 12 coarse purpose categories into the primer's finer functional categories
+  (Digital vs Media, Field vs Payroll). Likely worth building eventually, but the rules
+  would be judgment calls rather than mechanical lookups, so it's deferred rather than
+  built speculatively.
 
-**Phase 3 — the paging-dependent pieces:** top-10 donors (§18), timing curves (§13),
-memo drill-down (§7).
+**§16 (outside spending) is out of scope for this tool line, not just unbuilt.** It was
+originally slotted into Phase 2, but on reflection it doesn't fit the unit of analysis
+`fec_filing_review` and its companions are built around: a specific committee's own
+filing. §16 — independent expenditures for/against a candidate, electioneering
+communications, communication costs, Schedule F — is race-level, opponent-aware
+analysis, not report analysis. It belongs in a different tool (something more like a
+race/ecosystem overview, built around `fec_elections` and a candidate rather than a
+committee's report), not bolted onto the filing-review line. Left off the phasing list
+below; revisit if/when that separate tool gets scoped.
+
+**Phase 3 — the paging-dependent pieces:** top-10 donors (§18), distinct contributor
+counts and the JFC memo re-sort (both from the legacy-report gap analysis, bundled here
+since they share the same per-contributor paging cost), the precise maxed-out-donor
+share (same bundle, via `contributor_aggregate_ytd`), timing curves (§13), memo
+drill-down (§7), and the missing-info/data-completeness flag (legacy-report gap
+analysis).
 
 **Deferred pending resolution:** §12 in-kind exclusion, blocked on the receipt_type
 code list.

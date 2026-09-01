@@ -104,6 +104,10 @@ describe("filingReview", () => {
     expect(latest.fundraising.fundraising_receipts).toBeCloseTo(
       16840153.57 - 0 - 1973675.92 - 777.56 - 253149.97
     );
+    // Q2 2026 covers 2026-04-30 through 2026-06-30 -- 62 days.
+    expect(latest.coverage_days).toBe(62);
+    expect(latest.receipts_per_day).toBeCloseTo(16840153.57 / 62);
+    expect(latest.disbursements_per_day).toBeCloseTo(latest.total_disbursements_period / 62);
 
     expect(result.change_table).toHaveLength(2);
     expect(result.change_table[0].receipts_change).toBeCloseTo(16840153.57 - 3168948.31);
