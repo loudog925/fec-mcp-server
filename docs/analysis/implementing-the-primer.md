@@ -339,25 +339,86 @@ code list.
 
 ---
 
-## 3. Verification checklist before writing code
+## 3. Verification checklist — resolved 2026-09-01 against live data
 
-Ordered by how much depends on it:
+All eight items below were checked against `api.open.fec.gov` directly (via committees
+like ActBlue, DNC, RNC, the DNC's JFCs, Kamala Harris's Senate/2020-presidential
+committees, and Jon Ossoff's 2026 Senate committee) and against OpenFEC's own source at
+`raw.githubusercontent.com/fecgov/openFEC/develop/`. Fixtures captured in
+`tests/fixtures/committee-reports-f3.json` (Ossoff Senate, 2026), `-f3x.json` (DNC,
+2026), `-f3p.json` (Harris for President, 2019).
 
-1. **`memo_code === 'X'`** actually marks memo rows in live Schedule A/B responses, and
-   `non_memo_total` on the Schedule B aggregates excludes them as expected.
-2. **F3 `_ytd` fields** — cycle-to-date or calendar-year-to-date? (§2)
-3. **`receipt_type` / `disbursement_type` codes for in-kind.** (§12)
-4. **`disbursement_purpose_category` value list**, enumerated from live data. (§6)
-5. **Committee `designation` codes** — confirm `P`/`A`/`J`/`D`/`U`. (§1, §16)
-6. **Whether `ScheduleABySize.total` includes memo rows** — it's `total`, not
-   `non_memo_total`, unlike the Schedule B aggregates. Asymmetry worth checking.
-7. **Exact aggregate endpoint paths** — the models are confirmed in `aggregates.py`;
-   the URL paths were not (`rest.py` doesn't declare them; they're in
-   `webservices/resources/`).
-8. **`/efile/` endpoint paths and response shapes.** (§17)
+1. **`memo_code === 'X'` marks memo rows — confirmed.** Live Schedule A values are only
+   `null` or `'X'`. **Correction to §0.1/§0.3's field name**: the Schedule B aggregate
+   field is just **`total`**, not `non_memo_total` — no field of that name exists on the
+   live response. But it behaves as advertised: confirmed empirically on a joint
+   fundraising committee (10,000 Lakes Victory) where a size bucket's raw non-memo sum
+   ($73,600) matched the aggregate's `total` exactly, excluding a $5,200 memo row from
+   the same bucket. `ScheduleBByPurpose` additionally exposes `memo_count`/`memo_total`
+   alongside `total`, so the memo amount is separately visible, not just excluded.
+2. **F3 `_ytd` is cycle-to-date, not calendar-year-to-date — confirmed, and this was the
+   right thing to check.** Traced Kamala Harris for President's (`C00694455`) YTD
+   receipts across the 2019→2020 boundary: YE 2019 report shows
+   `total_receipts_ytd: 40,900,976.24`; the very next report (Q1 2020) shows
+   `total_receipts_period: 182,396.35` and `total_receipts_ytd: 41,083,372.59` —
+   40,900,976.24 + 182,396.35 = 41,083,372.59. It accumulates straight through the
+   calendar-year boundary with no reset, matching Form 3's Column B (cycle-to-date), not
+   the field name's literal implication. Fixture: `committee-reports-f3p.json`.
+3. **In-kind has no dedicated code anywhere in the schema — this is a Gap, not a
+   `[verify]`.** Sampled `receipt_type`/`receipt_type_desc` and
+   `disbursement_type`/`disbursement_type_description` across ActBlue, DNC, RNC, and
+   both Harris committees, several date ranges each: observed codes are ordinary
+   transaction-type codes (`15` Contribution, `15E` Earmarked, `18G`/`24G` Transfer,
+   `24K` Contribution Made to Non-Affiliated, etc.) — nothing resembling "in-kind."
+   `RECEIPT_TYPE_CODES`/`DISBURSEMENT_TYPE_CODES` in `docs.py` turned out to be a
+   different, narrower thing than assumed: national-party-account codes (30/31/32,
+   40/41/42) for conventions/HQ buildings/recounts only, not a general in-kind
+   indicator. Checked `reports.py` too — no `*_in_kind_*` field exists at the report
+   level either. **§9/§12's in-kind exclusion is not obtainable from any structured
+   field.** It can only be approximated heuristically (matching a same-day, same-amount
+   receipt/disbursement pair, or free-text matching on `disbursement_description`/
+   `receipt_type_desc` for "IN KIND" / "IN-KIND"), and that heuristic will miss cases.
+   Recommend the Phase 3 (or later) in-kind work lead with that caveat rather than
+   present a number.
+4. **`disbursement_purpose_category` value list, enumerated.** Sampled `by_purpose`
+   across six committees (ActBlue, DNC, RNC, both Harris committees, Ossoff): 11 values
+   observed — `ADMINISTRATIVE`, `ADVERTISING`, `CONTRIBUTIONS`, `EVENTS`,
+   `FUNDRAISING`, `LOAN-REPAYMENTS`, `MATERIALS`, `OTHER`, `REFUNDS`, `TRANSFERS`,
+   `TRAVEL`. Treat as a working set, not a guaranteed-exhaustive enum — FEC could add
+   more.
+5. **Committee `designation` codes — all five confirmed live**: `/committees/?designation=X`
+   returns real committees for `P` (e.g. a presidential-committee shell), `A`, `J`
+   (10,000 Lakes Victory), `D`, and `U` (ActBlue).
+6. **`ScheduleABySize.total` excludes memo rows too — no asymmetry.** Same empirical
+   check as item 1: the by_size bucket's `total` matched the non-memo sum exactly and
+   excluded the memo row. The asymmetry the primer worried about doesn't exist in
+   practice — `by_size` just doesn't *surface* a separate memo figure the way
+   `by_purpose` does, but its `total` is memo-safe the same way.
+7. **Aggregate endpoint paths — confirmed from OpenFEC's `webservices/resources/aggregates.py`
+   comments and live calls**: `/schedules/schedule_a/by_employer/`, `by_occupation/`,
+   `by_size/`, `by_state/`, `by_zip/`; `/schedules/schedule_b/by_purpose/`,
+   `by_recipient/`, `by_recipient_id/`; `/schedules/schedule_e/by_candidate/`;
+   `/communication_costs/by_candidate/`; `/electioneering/by_candidate/`. Also
+   confirmed `/schedules/schedule_f/` (Schedule F, party coordinated expenditures, per
+   §16's 2026 addition) live for Kamala Harris — 109 records for the 2024 cycle.
+8. **`/efile/` paths confirmed from `webservices/resources/sched_a.py`/`sched_b.py`/
+   `sched_e.py`/`sched_h4.py` and a live call**: `/schedules/schedule_a/efile/`,
+   `/schedules/schedule_b/efile/`, `/schedules/schedule_e/efile/`,
+   `/schedules/schedule_h4/efile/`. Live-called `schedule_a/efile/` for Ossoff's
+   committee — works, distinct field set from the regular Schedule A endpoint
+   (`contributor_aggregate_ytd` present, no `line_number_label`).
 
-Capture one real reports response per form type (F3, F3P, F3X) as committed fixtures
-while doing this.
+### A ninth finding, not on the original checklist
+
+**`most_recent=true` on `/committee/{id}/reports/` does not filter server-side.**
+Discovered while capturing the F3P fixture: querying Kamala Harris's 2020 committee
+with `most_recent=true` for a single reporting period returned every historical
+amendment of that report, each still carrying its own correct `most_recent` boolean —
+the *parameter* just didn't reduce the result set at all. Fixed in
+`committeeReports.ts`: results are now filtered client-side on `most_recent !== false`
+whenever the caller leaves `is_amended` unset (the case that's supposed to mean "just
+give me the current version of each report"). This matters for Phase 1's report-to-report
+diffing, which depends on getting exactly one row per period.
 
 ---
 
