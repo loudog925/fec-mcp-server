@@ -19,6 +19,8 @@ import { registerElectionsTool } from "./tools/elections.js";
 import { registerCalendarTool } from "./tools/calendar.js";
 import { registerLegalSearchTool } from "./tools/legal.js";
 import { registerFilingReviewTool } from "./tools/filingReview.js";
+import { registerContributionBreakdownTool } from "./tools/contributionBreakdown.js";
+import { registerSpendingBreakdownTool } from "./tools/spendingBreakdown.js";
 
 try {
   getApiKey();
@@ -48,6 +50,8 @@ registerElectionsTool(server);
 registerCalendarTool(server);
 registerLegalSearchTool(server);
 registerFilingReviewTool(server);
+registerContributionBreakdownTool(server);
+registerSpendingBreakdownTool(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

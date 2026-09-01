@@ -333,6 +333,18 @@ wrapped tools, and it's fully unit-testable against fixtures with no network.
 **Phase 2 — wrap the aggregates**, then steps 4, 5 and 7. Unlocks §4's clustering, §6's
 categories, §16's outside spending. This is where most remaining primer value sits.
 
+- **§4 (contribution clustering) and part of §6/§7 (spending by purpose/recipient): done**,
+  as `fec_contribution_breakdown` (`by_state`/`by_employer`/`by_occupation`/`by_size`) and
+  `fec_spending_breakdown` (`by_purpose`/`by_recipient`) — `src/tools/contributionBreakdown.ts`,
+  `src/tools/spendingBreakdown.ts`. `by_purpose` mode computes `unclassified_share_by_group`
+  per the §0.3 Layer 3 requirement (live-verified: 35% of Ossoff 2026's disbursements fall
+  in FEC's own `OTHER` bucket). **Not built**: the §0.3 Layer 2 rules-based sub-classifier
+  that would split FEC's 12 coarse categories into the primer's finer functional
+  categories (Digital vs Media, Field vs Payroll) — these tools expose FEC's own
+  categories as-is.
+- **§16 (outside spending — schedule_e/by_candidate, electioneering, communication costs,
+  Schedule F): not yet built.**
+
 **Phase 3 — the paging-dependent pieces:** top-10 donors (§18), timing curves (§13),
 memo drill-down (§7).
 
@@ -382,12 +394,15 @@ committees, and Jon Ossoff's 2026 Senate committee) and against OpenFEC's own so
    `receipt_type_desc` for "IN KIND" / "IN-KIND"), and that heuristic will miss cases.
    Recommend the Phase 3 (or later) in-kind work lead with that caveat rather than
    present a number.
-4. **`disbursement_purpose_category` value list, enumerated.** Sampled `by_purpose`
-   across six committees (ActBlue, DNC, RNC, both Harris committees, Ossoff): 11 values
-   observed — `ADMINISTRATIVE`, `ADVERTISING`, `CONTRIBUTIONS`, `EVENTS`,
-   `FUNDRAISING`, `LOAN-REPAYMENTS`, `MATERIALS`, `OTHER`, `REFUNDS`, `TRANSFERS`,
-   `TRAVEL`. Treat as a working set, not a guaranteed-exhaustive enum — FEC could add
-   more.
+4. **`disbursement_purpose_category` value list — resolved authoritatively, not just
+   sampled.** Live sampling across six committees (ActBlue, DNC, RNC, both Harris
+   committees, Ossoff) turned up 11 values and missed one — `webservices/args.py`'s
+   `disbursment_purpose_list` (the actual validator FEC's own API uses to reject
+   invalid `purpose` filter values) gives the authoritative, exhaustive list of 12:
+   `ADMINISTRATIVE`, `ADVERTISING`, `CONTRIBUTIONS`, `EVENTS`, `FUNDRAISING`,
+   `LOAN-REPAYMENTS`, `MATERIALS`, `OTHER`, `POLLING`, `REFUNDS`, `TRANSFERS`,
+   `TRAVEL`. `fec_spending_breakdown`'s `purpose` param is validated against this exact
+   list.
 5. **Committee `designation` codes — all five confirmed live**: `/committees/?designation=X`
    returns real committees for `P` (e.g. a presidential-committee shell), `A`, `J`
    (10,000 Lakes Victory), `D`, and `U` (ActBlue).
