@@ -199,6 +199,40 @@ Four other things the legacy report did that nothing here does yet:
    rate for `contributor_state`/`contributor_employer`/`contributor_occupation`) rather
    than the aggregates, since the aggregates don't expose a null-count.
 
+**High-dollar / low-dollar framing — a distinct cut from the size buckets above.**
+`by_size`'s five buckets are useful raw material but nobody asks "what's my $500–999.99
+share" — the actual recurring question, in both campaign self-reporting and press
+coverage, is binary: **what share of the money is small-dollar/grassroots vs. large-
+dollar/max-out-reliant.** Two things worth separating, at two different confidence
+levels:
+
+- **Cheap and buildable now, no new endpoint.** A "grassroots share" derived metric —
+  unitemized contributions plus the itemized-$200-and-under bucket, as a percentage of
+  `total_receipts_period` — and a "large-dollar share" using `by_size`'s top `$2000+`
+  bucket the same way. Both are a summary layer over data `fec_contribution_breakdown`
+  already returns, the same pattern as `fec_spending_breakdown`'s
+  `unclassified_share_by_group`. **Caveat that has to travel with this number**: FEC's
+  `$2000+` bucket is a fixed reporting-threshold artifact, not "maxed out to the legal
+  limit" — the actual per-election individual limit is $3,500 for the 2025–2026 cycle
+  (up from $3,300 for 2023–2024; FEC raises it every odd year for inflation — see
+  sources below), and it applies **per election**, so a donor can legally give $3,500
+  for the primary and another $3,500 for the general, $7,000 total, without tripping any
+  single-contribution flag. A "large-dollar share" computed off the `$2000+` bucket is a
+  reasonable proxy for "not itemized-small," but it is not the same claim as "this
+  committee is reliant on maxed-out donors," and should not be labeled that way.
+- **The actually-precise version needs paging, and belongs with the other
+  paging-dependent work.** To say *how much of a committee's money comes from donors at
+  or near their legal cap* requires raw Schedule A rows and each contributor's
+  `contributor_aggregate_ytd` (already confirmed present on live rows — see §0.1's memo
+  finding) compared against $3,500 (or $7,000 cycle-to-date across both elections,
+  watching for the cycle-to-date-not-calendar-year-to-date field-naming trap already
+  documented in the §3 verification section). That's the same contributor-level
+  dedup/aggregation cost as the legacy report's distinct-contributor-count item and the
+  primer's top-10-donors item above — group this with Phase 3, not Phase 2.
+
+Sources for the $3,500/$7,000 figures: [FEC — Contribution limits](https://www.fec.gov/help-candidates-and-committees/candidate-taking-receipts/contribution-limits/),
+[FEC 2025–2026 contribution limits chart (PDF)](https://www.fec.gov/resources/cms-content/documents/contribution-limits-chart-2025-2026.pdf).
+
 ### §5 — Joint fundraising committees
 
 Implementable as the primer specifies:
