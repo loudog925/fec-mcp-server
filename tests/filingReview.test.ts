@@ -138,6 +138,26 @@ describe("filingReview", () => {
     expect(result.ecosystem).toBeNull();
     expect(result.primary_timing_guard).toBeNull();
     expect(result.caveats.some((c: string) => /this tool's own formula/i.test(c))).toBe(false);
+    // The committee-type framing leads the caveats array and explains up front
+    // why ecosystem/primary_timing_guard are null, rather than leaving the
+    // calling model to infer it from absent fields.
+    expect(result.caveats[0]).toMatch(/skipped below/i);
+  });
+
+  it("does not include a blanket in-kind caveat — the tool has no way to gauge in-kind materiality", async () => {
+    const fetchMock = mockRouter({
+      "/committee/C00718866/": {
+        results: [{ name: "OSSOFF FOR SENATE", designation: "P", candidate_ids: ["S8GA00180"] }],
+      },
+      "/committee/C00718866/reports/": f3Reports,
+      "/candidate/S8GA00180/": { results: [{ office: "S", state: "GA" }] },
+      "/election-dates/": { results: [] },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = JSON.parse(await filingReview({ committee_id: "C00718866" }));
+
+    expect(result.caveats.some((c: string) => /in-kind/i.test(c))).toBe(false);
   });
 
   it("does not compute the fundraising formula for a Form 3P committee (field names diverge from Form 3)", async () => {

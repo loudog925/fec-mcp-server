@@ -332,24 +332,6 @@ export async function filingReview(params: FilingReviewParams): Promise<string> 
     changeTable.push(diffConsecutive(summaries[i], summaries[i + 1]));
   }
 
-  const caveats: string[] = [
-    "In-kind contributions have no dedicated field anywhere in the OpenFEC schema " +
-      "(verified against the reports, Schedule A, and Schedule B models) — the cash " +
-      "figures and burn rates below are not adjusted for them.",
-  ];
-  if (latest.fundraising) {
-    caveats.push(
-      "fundraising_receipts and operating_burn_rate are this tool's own formula, not " +
-        "an FEC-reported figure — see the fundraising.label field on each report summary."
-    );
-  }
-  if (changeTable.some((row) => row.period_length_mismatch)) {
-    caveats.push(
-      "Some compared periods differ substantially in length (coverage_days) — burn " +
-        "rate comparisons across them are not directly comparable without normalizing per day."
-    );
-  }
-
   let ecosystem: Record<string, EcosystemEntry[]> | null = null;
   if (committee.candidate_ids && committee.candidate_ids.length > 0) {
     try {
@@ -364,6 +346,31 @@ export async function filingReview(params: FilingReviewParams): Promise<string> 
     primaryTiming = await checkPrimaryTiming(committee, latest);
   } catch {
     primaryTiming = null;
+  }
+
+  // Lead with what kind of committee this is, always — the designation/type
+  // determines which of the checks below even apply, and burying that as an
+  // aside (rather than the frame for everything else) is a common analysis
+  // error in itself.
+  const caveats: string[] = [
+    `This is a ${committee.committee_type_full ?? committee.committee_type ?? "committee"} ` +
+      `(${committee.designation_full ?? committee.designation ?? "designation unknown"}).` +
+      (committee.designation !== "P"
+        ? " Ecosystem and primary-timing checks only apply to principal campaign " +
+          "committees, so both are skipped below."
+        : ""),
+  ];
+  if (latest.fundraising) {
+    caveats.push(
+      "fundraising_receipts and operating_burn_rate are this tool's own formula, not " +
+        "an FEC-reported figure — see the fundraising.label field on each report summary."
+    );
+  }
+  if (changeTable.some((row) => row.period_length_mismatch)) {
+    caveats.push(
+      "Some compared periods differ substantially in length (coverage_days) — burn " +
+        "rate comparisons across them are not directly comparable without normalizing per day."
+    );
   }
   if (primaryTiming) {
     caveats.push(
