@@ -18,6 +18,7 @@ import { registerDebtsTool } from "./tools/debts.js";
 import { registerElectionsTool } from "./tools/elections.js";
 import { registerCalendarTool } from "./tools/calendar.js";
 import { registerLegalSearchTool } from "./tools/legal.js";
+import { registerFilingReviewTool } from "./tools/filingReview.js";
 
 try {
   getApiKey();
@@ -46,6 +47,7 @@ registerDebtsTool(server);
 registerElectionsTool(server);
 registerCalendarTool(server);
 registerLegalSearchTool(server);
+registerFilingReviewTool(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
