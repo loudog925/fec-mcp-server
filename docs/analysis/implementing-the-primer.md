@@ -156,6 +156,49 @@ mixes small itemized gifts with the unitemized lump. Using them interchangeably 
 be a quiet error, and it reinforces §4's insistence that the unitemized share be
 described precisely.
 
+**Gap analysis against a legacy report (`Sample_FecContributionBreakdown.pdf`, run
+2012-10-01).** An older product report built the same "fundraising profile" idea. Its
+row structure — Individual (Itemized / Unitemized), PAC, Joint Fundraiser broken into
+its Individual-origin and PAC-origin components, rolled up to Total Individual/PAC/Party
+Committee/Candidate/Total — is a cleaner version of §5's JFC memo-attribution rule than
+anything built so far: it doesn't just flag memo rows, it re-sorts memo-coded JFC
+contributions back into the underlying contributor-type buckets (Individual vs PAC) and
+rolls that into the same totals as direct gifts. Nothing currently in this repo does that
+re-sorting — `fec_contribution_breakdown` and the memo rule in `implementing-the-primer.md`
+§5 identify memo rows but don't reclassify them by underlying contributor type. Worth
+building as a real Phase 2/3 item, not just documenting.
+
+Four other things the legacy report did that nothing here does yet:
+
+1. **In-state vs. out-of-state as a first-class binary cut**, not just full `by_state`
+   detail. Useful because "how much of this is from home-state donors" is usually the
+   actual question, and a 50-row state table makes the caller compute that themselves.
+   Cheap to add as a derived summary over `fec_contribution_breakdown`'s `by_state`
+   results (sum the row matching the committee's own state vs. everything else) — no
+   new endpoint needed.
+2. **Distinct contributor counts, not just contribution counts.** Every one of the
+   legacy report's tables reports contributions and contributors side by side (e.g. 2
+   itemized contributions from 1 distinct contributor). OpenFEC's `by_*` aggregates only
+   give a contribution `count`, never a distinct-contributor count — getting that
+   requires paging raw Schedule A and deduping by `contributor_id`, which is a Phase 3,
+   paging-dependent cost matching the primer's top-10-donors item. Worth building
+   alongside that rather than separately.
+3. **Average-per-day**, i.e. total ÷ length of the covered period. This is exactly the
+   per-day normalization §9 already flagged as missing when comparing periods of
+   different lengths (see the burn-rate note above) — `fec_filing_review` computes
+   `coverage_days` per report already, so this is a one-line addition: divide any
+   period total by its `coverage_days`.
+4. **A missing-information / data-completeness flag** — the legacy report's "Have
+   Information / Do Not Have Info" table reports what share of contributions (and
+   contributors) lack identifying fields. This matters specifically because it caps how
+   much to trust `by_state`/`by_employer`/`by_occupation`: if 20% of a committee's
+   itemized rows have a null `contributor_state`, the geographic-concentration
+   breakdown is silently understating everywhere-else money, in the same spirit as the
+   primer's own §20 discipline about not presenting a derived number without its
+   caveat. Not currently computed anywhere — would need a raw Schedule A pass (null
+   rate for `contributor_state`/`contributor_employer`/`contributor_occupation`) rather
+   than the aggregates, since the aggregates don't expose a null-count.
+
 ### §5 — Joint fundraising committees
 
 Implementable as the primer specifies:
