@@ -184,7 +184,11 @@ export function registerContributionBreakdownTool(server: McpServer): void {
       "geographic_summary_by_group (in_state vs. out_of_state totals/shares) when " +
       "home_state is supplied — deliberately not inferred from the committee's own " +
       "registered address, since a compliance firm's mailing address can differ from " +
-      "the race's actual state; pass the candidate's office state instead.",
+      "the race's actual state; pass the candidate's office state instead. Only pass " +
+      "home_state for a candidate committee (designation P or A) — for a PAC, party " +
+      "committee, or other unauthorized committee there is no \"home state\" a donor " +
+      "can meaningfully be in- or out-of-state relative to, so leave it unset and use " +
+      "the raw by_state breakdown instead.",
     {
       mode: z
         .enum(["by_state", "by_employer", "by_occupation", "by_size"])
@@ -197,8 +201,10 @@ export function registerContributionBreakdownTool(server: McpServer): void {
         .length(2)
         .optional()
         .describe(
-          "The race's home state, e.g. the candidate's office state (by_state mode only). When " +
-            "supplied, adds geographic_summary_by_group: in-state vs. out-of-state totals and shares."
+          "The candidate's office state (by_state mode only). When supplied, adds " +
+            "geographic_summary_by_group: in-state vs. out-of-state totals and shares. Only " +
+            "meaningful for a candidate committee (designation P or A) — leave unset for PACs, " +
+            "party committees, and other unauthorized committees, which have no race-tied home state."
         ),
       hide_null: z.boolean().optional().describe("Omit rows with no resolvable state (by_state mode only)"),
       employer: z.array(z.string()).optional().describe("Filter to specific employer names (by_employer mode only)"),

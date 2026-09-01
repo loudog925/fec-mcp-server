@@ -420,8 +420,15 @@ value sits.
   (grassroots vs. large-dollar share) and `by_state` mode computes
   `geographic_summary_by_group` (in-state vs. out-of-state, when `home_state` is
   supplied) — both from the legacy-report gap analysis above, live-verified against
-  Ossoff 2026 (69% grassroots, 21% in-state). `fec_filing_review`'s report summaries
-  also carry `receipts_per_day`/`disbursements_per_day` now, from the same gap analysis.
+  Ossoff 2026 (69% grassroots, 21% in-state). **In-state/out-of-state is a
+  candidate-committee concept specifically** — a PAC, party committee, or other
+  unauthorized committee has no race-tied home state for a donor to be in- or
+  out-of-state relative to, so `home_state` only makes sense for designation `P`/`A`
+  committees. The tool doesn't gate this (it's opt-in and requires the caller to
+  supply `home_state` explicitly, so there's no auto-inference to get wrong for a
+  PAC), but the tool description now says so directly. `fec_filing_review`'s report
+  summaries also carry `receipts_per_day`/`disbursements_per_day` now, from the same
+  gap analysis — that one applies to any committee type.
 - **Deferred, on purpose**: the §0.3 Layer 2 rules-based sub-classifier that would split
   FEC's 12 coarse purpose categories into the primer's finer functional categories
   (Digital vs Media, Field vs Payroll). Likely worth building eventually, but the rules
