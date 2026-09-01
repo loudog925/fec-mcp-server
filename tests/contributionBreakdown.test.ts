@@ -75,6 +75,69 @@ describe("contributionBreakdown", () => {
     expect(sizeUrl).toContain("size=2000");
   });
 
+  it("computes size_profile_by_group (grassroots vs. large-dollar share) for by_size mode", async () => {
+    const mockResponse = {
+      results: [
+        { committee_id: "C00718866", cycle: 2026, size: 0, total: 100 },
+        { committee_id: "C00718866", cycle: 2026, size: 200, total: 50 },
+        { committee_id: "C00718866", cycle: 2026, size: 2000, total: 350 },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => mockResponse })
+    );
+
+    const result = JSON.parse(
+      await contributionBreakdown({ mode: "by_size", committee_id: ["C00718866"] })
+    );
+
+    expect(result.results).toEqual(mockResponse.results);
+    expect(result.size_profile_by_group).toEqual([
+      {
+        committee_id: "C00718866",
+        cycle: 2026,
+        total: 500,
+        grassroots_total: 100,
+        grassroots_share: 0.2,
+        large_dollar_total: 350,
+        large_dollar_share: 0.7,
+      },
+    ]);
+  });
+
+  it("computes size_profile_by_group separately per (committee_id, cycle), and does not attach it to other modes", async () => {
+    const mockResponse = {
+      results: [
+        { committee_id: "C00001", cycle: 2024, size: 0, total: 90 },
+        { committee_id: "C00001", cycle: 2024, size: 2000, total: 10 },
+        { committee_id: "C00002", cycle: 2024, size: 0, total: 10 },
+        { committee_id: "C00002", cycle: 2024, size: 2000, total: 90 },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => mockResponse })
+    );
+
+    const sizeResult = JSON.parse(
+      await contributionBreakdown({ mode: "by_size", committee_id: ["C00001", "C00002"] })
+    );
+    const byCommittee = Object.fromEntries(
+      sizeResult.size_profile_by_group.map((g: { committee_id: string; large_dollar_share: number }) => [
+        g.committee_id,
+        g.large_dollar_share,
+      ])
+    );
+    expect(byCommittee["C00001"]).toBeCloseTo(0.1);
+    expect(byCommittee["C00002"]).toBeCloseTo(0.9);
+
+    const stateResult = JSON.parse(
+      await contributionBreakdown({ mode: "by_state", committee_id: ["C00001"] })
+    );
+    expect(stateResult.size_profile_by_group).toBeUndefined();
+  });
+
   it("passes cycle and page through", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

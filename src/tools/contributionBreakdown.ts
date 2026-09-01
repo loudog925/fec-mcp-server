@@ -3,8 +3,65 @@ import { z } from "zod";
 import { fetchFEC } from "../fecClient.js";
 
 // Confirmed live and against webservices/args.py's schedule_a_by_size validator:
-// these are the only four bucket boundaries the aggregate uses.
+// these are the only five bucket boundaries the aggregate uses. Per docs.py's SIZE
+// field: 0 = "$200 and under" (includes unitemized), 200 = "$200.01-499.99",
+// 500 = "$500-999.99", 1000 = "$1000-1999.99", 2000 = "$2000+".
 const SIZE_BUCKETS = [0, 200, 500, 1000, 2000] as const;
+
+function num(value: unknown): number {
+  if (typeof value === "number") return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+interface SizeRow {
+  committee_id?: string;
+  cycle?: number;
+  size?: number;
+  total?: unknown;
+  [key: string]: unknown;
+}
+
+// "Grassroots share" and "large-dollar share" are a distinct, binary cut from the
+// five raw buckets -- the recurring question is small-dollar vs. large-dollar, not
+// "what's the $500-999.99 share." Grassroots = FEC's own $200-and-under bucket
+// (already includes unitemized, per docs.py). Large-dollar = the $2000+ bucket.
+//
+// Caveat that has to travel with large_dollar_share: the $2000+ bucket is a fixed
+// reporting-threshold artifact, not "maxed out to the legal limit" -- the actual
+// per-election individual limit is $3,500 for the 2025-2026 cycle ($7,000/cycle
+// across primary + general). This is a proxy for "not itemized-small," not a claim
+// about reliance on donors at their legal cap -- see implementing-the-primer.md §4.
+function summarizeSizeProfile(rows: SizeRow[]): Array<{
+  committee_id?: string;
+  cycle?: number;
+  total: number;
+  grassroots_total: number;
+  grassroots_share: number | null;
+  large_dollar_total: number;
+  large_dollar_share: number | null;
+}> {
+  const groups = new Map<
+    string,
+    { committee_id?: string; cycle?: number; total: number; grassroots_total: number; large_dollar_total: number }
+  >();
+  for (const row of rows) {
+    const key = `${row.committee_id ?? ""}::${row.cycle ?? ""}`;
+    const entry =
+      groups.get(key) ??
+      { committee_id: row.committee_id, cycle: row.cycle, total: 0, grassroots_total: 0, large_dollar_total: 0 };
+    const amount = num(row.total);
+    entry.total += amount;
+    if (row.size === 0) entry.grassroots_total += amount;
+    if (row.size === 2000) entry.large_dollar_total += amount;
+    groups.set(key, entry);
+  }
+  return [...groups.values()].map((g) => ({
+    ...g,
+    grassroots_share: g.total !== 0 ? g.grassroots_total / g.total : null,
+    large_dollar_share: g.total !== 0 ? g.large_dollar_total / g.total : null,
+  }));
+}
 
 export interface ContributionBreakdownParams {
   mode: "by_state" | "by_employer" | "by_occupation" | "by_size";
@@ -44,6 +101,12 @@ export async function contributionBreakdown(params: ContributionBreakdownParams)
     per_page: params.per_page ?? 20,
     page: params.page,
   });
+
+  if (mode === "by_size") {
+    const typed = data as { results?: SizeRow[] };
+    const size_profile_by_group = summarizeSizeProfile(typed.results ?? []);
+    return JSON.stringify({ ...typed, size_profile_by_group }, null, 2);
+  }
   return JSON.stringify(data, null, 2);
 }
 
@@ -55,7 +118,13 @@ export function registerContributionBreakdownTool(server: McpServer): void {
       "employer/occupation clustering, small-vs-large donor mix). Note on by_size: FEC's " +
       "$200-and-under bucket combines itemized contributions of $200 or less with " +
       "unitemized contributions — it is not the same population as the unitemized total " +
-      "reported elsewhere.",
+      "reported elsewhere. by_size mode also returns size_profile_by_group: a " +
+      "grassroots_share (that $200-and-under bucket) and large_dollar_share (the " +
+      "$2000+ bucket) per committee/cycle. large_dollar_share is a proxy for " +
+      "\"not itemized-small,\" not a claim about donors at their legal contribution " +
+      "cap — the 2025-2026 per-election individual limit is $3,500 ($7,000/cycle " +
+      "across primary and general), which this tool cannot check without paging " +
+      "raw Schedule A rows by contributor.",
     {
       mode: z
         .enum(["by_state", "by_employer", "by_occupation", "by_size"])
