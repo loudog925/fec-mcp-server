@@ -323,7 +323,9 @@ evidence the tool actually returned.
 
 ### Phasing
 
-**Phase 1 — steps 1, 2, 3, 6 and the §15 period guard.** Needs *no new endpoints*.
+**Phase 1 — steps 1, 2, 3, 6 and the §15 period guard. Done**, as `fec_filing_review`
+(`src/tools/filingReview.ts`, tested in `tests/filingReview.test.ts` against the fixtures
+in `tests/fixtures/`, live-smoke-tested against Ossoff 2026, the DNC, and Harris 2020).
 Delivers §1, §2, §3, §9, §10, §11, §14, §18 (minus top-10), and the primer's core
 principle. This is arithmetic over one `/committee/{id}/reports/` response plus already
 wrapped tools, and it's fully unit-testable against fixtures with no network.
