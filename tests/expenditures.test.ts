@@ -66,4 +66,10 @@ describe("itemizedExpenditures", () => {
     expect(calledUrl).toContain("last_index=4041720221492367184");
     expect(calledUrl).toContain("last_disbursement_date=2024-10-02");
   });
+
+  it("rejects a page beyond the deep-paging cap", async () => {
+    await expect(
+      itemizedExpenditures({ committee_id: ["C00358796"], page: 999 })
+    ).rejects.toThrow(/last_index/);
+  });
 });

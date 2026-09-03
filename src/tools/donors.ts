@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { fetchFEC } from "../fecClient.js";
+import { fetchPaginatedFEC } from "../fecClient.js";
 
 const DONOR_SEARCH_TIMEOUT_MS = 60000;
 
@@ -23,7 +23,7 @@ export async function donorSearch(params: DonorSearchParams): Promise<string> {
   if (!params.contributor_name || !params.contributor_name.trim()) {
     throw new Error("contributor_name is required to search for a donor.");
   }
-  const data = await fetchFEC(
+  const data = await fetchPaginatedFEC(
     "/schedules/schedule_a/",
     {
       contributor_name: params.contributor_name,
@@ -58,7 +58,16 @@ export function registerDonorSearchTool(server: McpServer): void {
       min_amount: z.number().optional(),
       max_amount: z.number().optional(),
       per_page: z.number().min(1).max(100).optional().describe("Results per page (default 20)"),
-      page: z.number().min(1).optional().describe("Page number for results beyond the first (default 1)"),
+      page: z
+        .number()
+        .min(1)
+        .optional()
+        .describe(
+          "Page number for results beyond the first (default 1). This endpoint silently " +
+            "caps deep page-based paging; requests beyond FEC_MAX_PAGE (default 10) are " +
+            "rejected and a mismatched pagination.page in the response throws. Use " +
+            "last_index for paging deeper."
+        ),
       last_index: z
         .string()
         .optional()
