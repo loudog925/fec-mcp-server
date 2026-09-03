@@ -57,9 +57,21 @@ the API key directly:
 }
 ```
 
-Restart Claude Desktop/Code afterward. When Claude launches the server this
-way, the `env` block above is what supplies the key — the local `.env` file
-is only used when you run `node dist/index.js` yourself.
+Restart Claude Desktop/Code afterward.
+
+The `env` block is optional. The server resolves `.env` against its own
+install location rather than the current working directory, so a `.env` in
+the project root is picked up no matter where Claude launches the process
+from. Supplying `env` here still works and takes precedence – a real
+environment variable always beats the file. Prefer the `.env` file: it is
+gitignored, whereas `claude_desktop_config.json` is not, which makes it the
+easier place to leak a key from.
+
+If the server shows up as failed with no `fec_*` tools, it exited at startup
+because no key was found. The reason is in the MCP server log
+(`%APPDATA%\Claude\logs\` on Windows). Note that the `env` block does no
+shell expansion – `%FEC_API_KEY%` or `$env:FEC_API_KEY` is passed through as
+a literal string, which starts cleanly but then fails every call with a 403.
 
 ## Tools
 
@@ -93,6 +105,15 @@ paging deep into a large result set, since FEC's offset-based `page` pagination 
 reliable past the first several thousand records. Verified against live responses (see
 `npm run smoke`).
 
+For `fec_itemized_contributions`, `fec_donor_search`, and `fec_itemized_expenditures`
+specifically (Schedule A/B), `page` is a hard guard, not just documentation: FEC's
+`page`-based paging on these endpoints silently caps out and re-returns page 1 with a normal
+HTTP 200 once you request deep enough, so a naive page-counting pull can end up triple-counting
+one page while looking like a stratified sample. These three tools reject `page` past
+`FEC_MAX_PAGE` (default 10, override via env), throw if the response's `pagination.page` doesn't
+match the page you asked for (proof the cap was hit), and attach a `pagination_warning` field to
+the response for any page in between. Use `last_index` instead once you hit the cap.
+
 `fec_legal_search` is the one exception to the `per_page`/`page` convention — it uses the
 FEC legal search endpoint's own `from_hit` (0-indexed offset) and `hits_returned` (max 200)
 params instead.
@@ -124,6 +145,9 @@ tool (e.g. "search for federal candidates named Smith in California").
 |---|---|---|---|
 | `FEC_API_KEY` | Yes | — | From https://api.open.fec.gov/developers/ |
 | `FEC_API_TIMEOUT_MS` | No | 30000 (60000 for `fec_itemized_contributions` / `fec_donor_search` / `fec_spending_search`) | Per-request timeout override |
+| `FEC_MAX_PAGE` | No | 10 | Deep-paging ceiling for `fec_itemized_contributions` / `fec_donor_search` / `fec_itemized_expenditures`; requests for `page` beyond this are rejected |
+| `FEC_RATE_LIMIT_RETRIES` | No | 3 | How many times to retry an HTTP 429 before giving up |
+| `FEC_RATE_LIMIT_BASE_MS` | No | 1000 | Base delay for exponential backoff on 429 (used when the API doesn't send `Retry-After`) |
 
 ## Troubleshooting: every tool times out
 

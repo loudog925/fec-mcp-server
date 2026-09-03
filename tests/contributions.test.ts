@@ -69,16 +69,22 @@ describe("itemizedContributions", () => {
   });
 
   it("uses a 60000ms timeout, since unnarrowed schedule_a queries have been observed taking ~26s upstream", async () => {
-    const fetchFECSpy = vi
-      .spyOn(fecClient, "fetchFEC")
+    const fetchPaginatedFECSpy = vi
+      .spyOn(fecClient, "fetchPaginatedFEC")
       .mockResolvedValue({ results: [] });
 
     await itemizedContributions({ committee_id: ["C00358796"] });
 
-    expect(fetchFECSpy).toHaveBeenCalledWith(
+    expect(fetchPaginatedFECSpy).toHaveBeenCalledWith(
       "/schedules/schedule_a/",
       expect.any(Object),
       60000
     );
+  });
+
+  it("rejects a page beyond the deep-paging cap", async () => {
+    await expect(
+      itemizedContributions({ committee_id: ["C00358796"], page: 999 })
+    ).rejects.toThrow(/last_index/);
   });
 });

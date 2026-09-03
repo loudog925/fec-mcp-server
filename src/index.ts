@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-import "dotenv/config";
+import { config as loadDotenv } from "dotenv";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { getApiKey } from "./fecClient.js";
@@ -18,6 +20,14 @@ import { registerDebtsTool } from "./tools/debts.js";
 import { registerElectionsTool } from "./tools/elections.js";
 import { registerCalendarTool } from "./tools/calendar.js";
 import { registerLegalSearchTool } from "./tools/legal.js";
+
+// Resolve .env against this file's own location, not process.cwd(). Claude
+// Desktop/Code launches the server with its own working directory (commonly /
+// or the app install dir), so a cwd-relative lookup silently misses the .env
+// sitting next to the project and the server exits with no key. Real
+// environment variables still win – dotenv does not overwrite what is already
+// set, so an MCP config env block keeps taking precedence.
+loadDotenv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
 
 try {
   getApiKey();

@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { fetchFEC } from "../fecClient.js";
+import { fetchPaginatedFEC } from "../fecClient.js";
 
 // Unnarrowed schedule_a queries (e.g. a common contributor_name with no
 // date range) have been observed taking ~26s upstream, leaving too little
@@ -32,7 +32,7 @@ export async function itemizedContributions(
       "Provide at least committee_id or contributor_name to search itemized contributions."
     );
   }
-  const data = await fetchFEC(
+  const data = await fetchPaginatedFEC(
     "/schedules/schedule_a/",
     {
       committee_id: committee_id?.map((id) => id.toUpperCase()),
@@ -69,7 +69,16 @@ export function registerItemizedContributionsTool(server: McpServer): void {
       min_amount: z.number().optional(),
       max_amount: z.number().optional(),
       per_page: z.number().min(1).max(100).optional().describe("Results per page (default 20)"),
-      page: z.number().min(1).optional().describe("Page number for results beyond the first (default 1)"),
+      page: z
+        .number()
+        .min(1)
+        .optional()
+        .describe(
+          "Page number for results beyond the first (default 1). This endpoint silently " +
+            "caps deep page-based paging; requests beyond FEC_MAX_PAGE (default 10) are " +
+            "rejected and a mismatched pagination.page in the response throws. Use " +
+            "last_index for paging deeper."
+        ),
       last_index: z
         .string()
         .optional()

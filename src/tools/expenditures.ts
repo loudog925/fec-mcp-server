@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { fetchFEC } from "../fecClient.js";
+import { fetchPaginatedFEC } from "../fecClient.js";
 
 export interface ItemizedExpendituresParams {
   committee_id?: string[];
@@ -26,7 +26,7 @@ export async function itemizedExpenditures(
       "Provide at least committee_id or recipient_name to search itemized expenditures."
     );
   }
-  const data = await fetchFEC("/schedules/schedule_b/", {
+  const data = await fetchPaginatedFEC("/schedules/schedule_b/", {
     committee_id: committee_id?.map((id) => id.toUpperCase()),
     recipient_name,
     recipient_state: params.recipient_state,
@@ -57,7 +57,16 @@ export function registerItemizedExpendituresTool(server: McpServer): void {
       min_amount: z.number().optional(),
       max_amount: z.number().optional(),
       per_page: z.number().min(1).max(100).optional().describe("Results per page (default 20)"),
-      page: z.number().min(1).optional().describe("Page number for results beyond the first (default 1)"),
+      page: z
+        .number()
+        .min(1)
+        .optional()
+        .describe(
+          "Page number for results beyond the first (default 1). This endpoint silently " +
+            "caps deep page-based paging; requests beyond FEC_MAX_PAGE (default 10) are " +
+            "rejected and a mismatched pagination.page in the response throws. Use " +
+            "last_index for paging deeper."
+        ),
       last_index: z
         .string()
         .optional()
