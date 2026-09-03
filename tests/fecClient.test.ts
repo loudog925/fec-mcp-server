@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchFEC, getApiKey, FecApiError } from "../src/fecClient.js";
+import { fetchFEC, fetchPaginatedFEC, getApiKey, FecApiError } from "../src/fecClient.js";
 
 describe("getApiKey", () => {
   it("throws when FEC_API_KEY is not set", () => {
@@ -16,6 +16,8 @@ describe("getApiKey", () => {
 describe("fetchFEC", () => {
   beforeEach(() => {
     process.env.FEC_API_KEY = "test-key";
+    process.env.FEC_RATE_LIMIT_BASE_MS = "0";
+    delete process.env.FEC_RATE_LIMIT_RETRIES;
     vi.restoreAllMocks();
   });
 
@@ -114,5 +116,181 @@ describe("fetchFEC", () => {
       code: "UNAVAILABLE",
       message: expect.stringContaining("--use-system-ca"),
     });
+  });
+
+  it("retries after a 429 and returns the body from the eventual 200", async () => {
+    const mockBody = { results: [] };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: { get: () => null },
+        json: async () => ({}),
+      })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => mockBody });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const data = await fetchFEC("/candidates/search/", {});
+
+    expect(data).toEqual(mockBody);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("honors a numeric Retry-After header", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: { get: (name: string) => (name.toLowerCase() === "retry-after" ? "0" : null) },
+        json: async () => ({}),
+      })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ results: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const data = await fetchFEC("/candidates/search/", {});
+
+    expect(data).toEqual({ results: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("throws RATE_LIMITED after exhausting retries", async () => {
+    process.env.FEC_RATE_LIMIT_RETRIES = "2";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: { get: () => null },
+      json: async () => ({}),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchFEC("/candidates/search/", {})).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+      status: 429,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry a non-429 4xx error", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: { get: () => null },
+      json: async () => ({ message: "bad" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchFEC("/candidates/search/", {})).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not abort a retried attempt because of a timeout that started on a previous attempt", async () => {
+    process.env.FEC_RATE_LIMIT_BASE_MS = "30";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: { get: () => null },
+        json: async () => ({}),
+      })
+      .mockImplementationOnce(async (_url: string, init?: RequestInit) => {
+        expect(init?.signal?.aborted).toBe(false);
+        return { ok: true, status: 200, json: async () => ({ results: [] }) };
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const data = await fetchFEC("/candidates/search/", {}, 15);
+
+    expect(data).toEqual({ results: [] });
+  });
+});
+
+describe("fetchPaginatedFEC", () => {
+  beforeEach(() => {
+    process.env.FEC_API_KEY = "test-key";
+    delete process.env.FEC_MAX_PAGE;
+    vi.restoreAllMocks();
+  });
+
+  it("throws when page exceeds FEC_MAX_PAGE, naming last_index, without calling fetch", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchPaginatedFEC("/schedules/schedule_a/", { page: 11 })
+    ).rejects.toThrow(/last_index/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("respects a FEC_MAX_PAGE override", async () => {
+    process.env.FEC_MAX_PAGE = "20";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [], pagination: { page: 11 } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const data = await fetchPaginatedFEC<{ pagination_warning?: string }>(
+      "/schedules/schedule_a/",
+      { page: 11 }
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(data.pagination_warning).toBeDefined();
+  });
+
+  it("throws when the response pagination.page does not match the requested page", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [], pagination: { page: 1 } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchPaginatedFEC("/schedules/schedule_a/", { page: 5 })
+    ).rejects.toThrow(/silently caps deep paging/);
+  });
+
+  it("attaches pagination_warning for page 2..threshold", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const data = await fetchPaginatedFEC<{ pagination_warning?: string }>(
+      "/schedules/schedule_a/",
+      { page: 3 }
+    );
+
+    expect(data.pagination_warning).toBeDefined();
+  });
+
+  it("does not attach pagination_warning or throw for page 1 or cursor-only calls", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const page1 = await fetchPaginatedFEC<{ pagination_warning?: string }>(
+      "/schedules/schedule_a/",
+      { page: 1 }
+    );
+    expect(page1.pagination_warning).toBeUndefined();
+
+    const cursorOnly = await fetchPaginatedFEC<{ pagination_warning?: string }>(
+      "/schedules/schedule_a/",
+      { last_index: "123" }
+    );
+    expect(cursorOnly.pagination_warning).toBeUndefined();
   });
 });

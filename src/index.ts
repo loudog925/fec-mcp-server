@@ -25,7 +25,7 @@ import { registerLegalSearchTool } from "./tools/legal.js";
 // Desktop/Code launches the server with its own working directory (commonly /
 // or the app install dir), so a cwd-relative lookup silently misses the .env
 // sitting next to the project and the server exits with no key. Real
-// environment variables still win — dotenv does not overwrite what is already
+// environment variables still win – dotenv does not overwrite what is already
 // set, so an MCP config env block keeps taking precedence.
 loadDotenv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
 
