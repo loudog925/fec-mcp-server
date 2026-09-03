@@ -92,6 +92,9 @@ a literal string, which starts cleanly but then fails every call with a 403.
 | `fec_elections` | Candidates in a race with financial totals, or an aggregate race summary; supports zip-based lookups |
 | `fec_calendar` | FEC calendar events, report filing deadlines, or election dates |
 | `fec_legal_search` | Search advisory opinions, enforcement cases (MURs), ADRs, administrative fines, and statutes |
+| `fec_filing_review` | A structured "first 15 minutes" review of a committee's latest report: summary numbers, change table vs. prior reports, committee ecosystem, and a primary-timing guard |
+| `fec_contribution_breakdown` | Schedule A contributions by contributor state, employer, occupation, or dollar-size bucket |
+| `fec_spending_breakdown` | Schedule B disbursements by FEC purpose category (with an unclassified-share figure) or by recipient/vendor |
 
 Every search tool accepts `per_page` (max 100) and `page` to walk result sets beyond the first page.
 

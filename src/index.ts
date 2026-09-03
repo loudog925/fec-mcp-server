@@ -20,6 +20,9 @@ import { registerDebtsTool } from "./tools/debts.js";
 import { registerElectionsTool } from "./tools/elections.js";
 import { registerCalendarTool } from "./tools/calendar.js";
 import { registerLegalSearchTool } from "./tools/legal.js";
+import { registerFilingReviewTool } from "./tools/filingReview.js";
+import { registerContributionBreakdownTool } from "./tools/contributionBreakdown.js";
+import { registerSpendingBreakdownTool } from "./tools/spendingBreakdown.js";
 
 // Resolve .env against this file's own location, not process.cwd(). Claude
 // Desktop/Code launches the server with its own working directory (commonly /
@@ -56,6 +59,9 @@ registerDebtsTool(server);
 registerElectionsTool(server);
 registerCalendarTool(server);
 registerLegalSearchTool(server);
+registerFilingReviewTool(server);
+registerContributionBreakdownTool(server);
+registerSpendingBreakdownTool(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

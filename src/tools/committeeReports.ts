@@ -21,12 +21,24 @@ export interface CommitteeReportsParams {
   page?: number;
 }
 
+// The upstream `most_recent=true` query param does not actually filter the
+// response — it still returns every amended/superseded row alongside the
+// current one, just with `most_recent` set accordingly on each row. Confirmed
+// live against a committee with a long amendment history (20 rows returned
+// for a single reporting period, 8 of them still flagged most_recent: true
+// after upstream's own filter). So when the caller wants only current
+// versions (is_amended left unset), we filter client-side on that field.
+interface FecReportRow {
+  most_recent?: boolean;
+  [key: string]: unknown;
+}
+
 export async function committeeReports(params: CommitteeReportsParams): Promise<string> {
   const { committee_id, is_amended } = params;
   if (!committee_id || !committee_id.trim()) {
     throw new Error("committee_id is required, e.g. C00401224");
   }
-  const data = await fetchFEC(
+  const data = await fetchFEC<{ results?: FecReportRow[] }>(
     `/committee/${encodeURIComponent(committee_id.toUpperCase())}/reports/`,
     {
       cycle: params.cycle,
@@ -47,6 +59,9 @@ export async function committeeReports(params: CommitteeReportsParams): Promise<
       page: params.page,
     }
   );
+  if (is_amended === undefined && Array.isArray(data.results)) {
+    data.results = data.results.filter((r) => r.most_recent !== false);
+  }
   return JSON.stringify(data, null, 2);
 }
 
