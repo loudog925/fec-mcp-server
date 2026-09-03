@@ -57,9 +57,21 @@ the API key directly:
 }
 ```
 
-Restart Claude Desktop/Code afterward. When Claude launches the server this
-way, the `env` block above is what supplies the key — the local `.env` file
-is only used when you run `node dist/index.js` yourself.
+Restart Claude Desktop/Code afterward.
+
+The `env` block is optional. The server resolves `.env` against its own
+install location rather than the current working directory, so a `.env` in
+the project root is picked up no matter where Claude launches the process
+from. Supplying `env` here still works and takes precedence – a real
+environment variable always beats the file. Prefer the `.env` file: it is
+gitignored, whereas `claude_desktop_config.json` is not, which makes it the
+easier place to leak a key from.
+
+If the server shows up as failed with no `fec_*` tools, it exited at startup
+because no key was found. The reason is in the MCP server log
+(`%APPDATA%\Claude\logs\` on Windows). Note that the `env` block does no
+shell expansion – `%FEC_API_KEY%` or `$env:FEC_API_KEY` is passed through as
+a literal string, which starts cleanly but then fails every call with a 403.
 
 ## Tools
 
