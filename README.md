@@ -56,8 +56,11 @@ of public hostnames when deploying it (for example,
 stateless, so it works with hosted platforms and can scale across instances
 without session-aware routing.
 
-This endpoint has no authentication by default. Put it behind Secure MCP
-Tunnel or add an authentication layer before exposing it on a public URL.
+Set `MCP_AUTH_TOKEN` to require `Authorization: Bearer <token>` on `/mcp`;
+`/healthz` remains public for platform health checks. Keep the token in Render's
+environment settings or another secret manager, never in Git. If the token is
+unset, the endpoint has no authentication, so put it behind Secure MCP Tunnel
+or add an authentication layer before exposing it publicly.
 
 ## Wiring it into Claude Desktop / Claude Code
 

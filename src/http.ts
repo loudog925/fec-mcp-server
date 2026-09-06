@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { config as loadDotenv } from "dotenv";
 import { fileURLToPath } from "node:url";
@@ -11,6 +12,7 @@ loadDotenv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env"
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const host = process.env.MCP_HTTP_HOST ?? "0.0.0.0";
+const authToken = process.env.MCP_AUTH_TOKEN?.trim();
 const allowedHosts = (process.env.MCP_ALLOWED_HOSTS ?? "")
   .split(",")
   .map((value) => value.trim())
@@ -24,6 +26,7 @@ interface HttpResponse extends ServerResponse {
   status(code: number): HttpResponse;
   json(body: unknown): HttpResponse;
   send(body: unknown): HttpResponse;
+  setHeader(name: string, value: string): this;
 }
 
 function sendError(res: HttpResponse, status: number, message: string): void {
@@ -36,6 +39,25 @@ function sendError(res: HttpResponse, status: number, message: string): void {
   }
 }
 
+function isAuthorized(req: HttpRequest, res: HttpResponse): boolean {
+  if (!authToken) return true;
+
+  const authorization = req.headers.authorization;
+  const suppliedToken =
+    typeof authorization === "string" && authorization.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length).trim()
+      : "";
+  const expected = Buffer.from(authToken);
+  const supplied = Buffer.from(suppliedToken);
+  const valid = supplied.length === expected.length && timingSafeEqual(supplied, expected);
+
+  if (!valid) {
+    res.setHeader("WWW-Authenticate", 'Bearer realm="fec-mcp-server"');
+    res.status(401).send("Unauthorized");
+  }
+  return valid;
+}
+
 const app = createMcpExpressApp({
   host,
   ...(allowedHosts.length > 0 ? { allowedHosts } : {}),
@@ -46,6 +68,8 @@ app.get("/healthz", (_req: HttpRequest, res: HttpResponse) => {
 });
 
 app.post("/mcp", async (req: HttpRequest, res: HttpResponse) => {
+  if (!isAuthorized(req, res)) return;
+
   try {
     const server = createFecServer();
     const transport = new StreamableHTTPServerTransport({
