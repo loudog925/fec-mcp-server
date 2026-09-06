@@ -13,6 +13,10 @@ loadDotenv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env"
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const host = process.env.MCP_HTTP_HOST ?? "0.0.0.0";
+const allowedHosts = (process.env.MCP_ALLOWED_HOSTS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 const transports = new Map<string, StreamableHTTPServerTransport>();
 
 interface HttpRequest extends IncomingMessage {
@@ -35,7 +39,10 @@ function sendError(res: HttpResponse, status: number, message: string): void {
   }
 }
 
-const app = createMcpExpressApp();
+const app = createMcpExpressApp({
+  host,
+  ...(allowedHosts.length > 0 ? { allowedHosts } : {}),
+});
 
 app.get("/healthz", (_req: HttpRequest, res: HttpResponse) => {
   res.json({ status: "ok", server: "fec-mcp-server" });

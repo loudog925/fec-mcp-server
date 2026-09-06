@@ -50,8 +50,11 @@ npm run start:http
 It serves MCP at `http://localhost:3000/mcp` and a liveness check at
 `http://localhost:3000/healthz`. Set `PORT` when the host supplies a port, and
 set `MCP_HTTP_HOST=0.0.0.0` when the service must accept connections from a
-container or hosted platform. The HTTP transport keeps MCP sessions in memory,
-so use a single instance unless the deployment provides session-aware routing.
+container or hosted platform. Set `MCP_ALLOWED_HOSTS` to a comma-separated list
+of public hostnames when deploying it (for example,
+`MCP_ALLOWED_HOSTS=fec-mcp-server.onrender.com`). The HTTP transport keeps MCP
+sessions in memory, so use a single instance unless the deployment provides
+session-aware routing.
 
 This endpoint has no authentication by default. Put it behind Secure MCP
 Tunnel or add an authentication layer before exposing it on a public URL.
