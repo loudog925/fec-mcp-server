@@ -37,6 +37,25 @@ tool call fails immediately with a TLS certificate error, which without
 this flag surfaces from the tools as a generic "request failed or timed
 out" message. See Troubleshooting below.
 
+## Running the HTTP transport
+
+The repository also includes a Streamable HTTP entry point for a hosted
+deployment or a secure MCP tunnel:
+
+```powershell
+npm run build
+npm run start:http
+```
+
+It serves MCP at `http://localhost:3000/mcp` and a liveness check at
+`http://localhost:3000/healthz`. Set `PORT` when the host supplies a port, and
+set `MCP_HTTP_HOST=0.0.0.0` when the service must accept connections from a
+container or hosted platform. The HTTP transport keeps MCP sessions in memory,
+so use a single instance unless the deployment provides session-aware routing.
+
+This endpoint has no authentication by default. Put it behind Secure MCP
+Tunnel or add an authentication layer before exposing it on a public URL.
+
 ## Wiring it into Claude Desktop / Claude Code
 
 Add an entry to your MCP config (Claude Desktop's `claude_desktop_config.json`,
@@ -92,9 +111,16 @@ a literal string, which starts cleanly but then fails every call with a 403.
 | `fec_elections` | Candidates in a race with financial totals, or an aggregate race summary; supports zip-based lookups |
 | `fec_calendar` | FEC calendar events, report filing deadlines, or election dates |
 | `fec_legal_search` | Search advisory opinions, enforcement cases (MURs), ADRs, administrative fines, and statutes |
-| `fec_filing_review` | A structured "first 15 minutes" review of a committee's latest report: summary numbers, change table vs. prior reports, committee ecosystem, and a primary-timing guard |
+| `fec_filing_review` | A structured "first 15 minutes" review of a committee's latest report: summary numbers, authoritative filing page count joined by `file_number`, change table vs. prior reports, committee ecosystem, and a primary-timing guard |
 | `fec_contribution_breakdown` | Schedule A contributions by contributor state, employer, occupation, or dollar-size bucket |
 | `fec_spending_breakdown` | Schedule B disbursements by FEC purpose category (with an unclassified-share figure) or by recipient/vendor |
+
+Each report summary returned by `fec_filing_review` includes the report's `file_number`
+and OpenFEC's authoritative `pages` value from the filings endpoint. `file_number` is
+the stable join key for cross-referencing local or bulk datasets such as FECDownload.
+Because `fec_filing_review` intentionally compares only current report versions, its
+page counts exclude superseded filings. To measure all pages actually filed, including
+amendments, use `fec_filings` and count each relevant `file_number` once.
 
 Every search tool accepts `per_page` (max 100) and `page` to walk result sets beyond the first page.
 

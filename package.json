@@ -11,6 +11,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node --use-system-ca dist/index.js",
+    "start:http": "node --use-system-ca dist/http.js",
     "test": "vitest run",
     "smoke": "node --use-system-ca scripts/smoke-test.mjs"
   },
