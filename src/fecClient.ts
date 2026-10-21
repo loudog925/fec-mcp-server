@@ -46,15 +46,41 @@ function getTimeoutMs(defaultMs: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultMs;
 }
 
-function getRetryConfig(): { retries: number; baseMs: number } {
+function getRetryConfig(): { retries: number; baseMs: number; maxWaitMs: number } {
   const rawRetries = process.env.FEC_RATE_LIMIT_RETRIES;
   const rawBaseMs = process.env.FEC_RATE_LIMIT_BASE_MS;
+  const rawMaxWaitMs = process.env.FEC_RATE_LIMIT_MAX_WAIT_MS;
   const retries = rawRetries !== undefined ? Number(rawRetries) : NaN;
   const baseMs = rawBaseMs !== undefined ? Number(rawBaseMs) : NaN;
+  const maxWaitMs = rawMaxWaitMs !== undefined ? Number(rawMaxWaitMs) : NaN;
   return {
     retries: Number.isFinite(retries) && retries >= 0 ? retries : 3,
     baseMs: Number.isFinite(baseMs) && baseMs >= 0 ? baseMs : 1000,
+    maxWaitMs: Number.isFinite(maxWaitMs) && maxWaitMs >= 0 ? maxWaitMs : 15000,
   };
+}
+
+function formatWait(ms: number): string {
+  const seconds = Math.ceil(ms / 1000);
+  if (seconds < 120) return `${seconds} seconds`;
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 120) return `${minutes} minutes`;
+  return `${Math.round(minutes / 60)} hours`;
+}
+
+function rateLimitError(limit: string | null | undefined, retryAfterMs?: number): FecApiError {
+  const limitText = limit ? ` (key limit: ${limit} requests per window)` : "";
+  const waitText =
+    retryAfterMs !== undefined
+      ? `FEC asks to wait about ${formatWait(retryAfterMs)} before retrying. `
+      : "Wait a minute or so before retrying. ";
+  return new FecApiError(
+    `FEC API rate limit reached for this server's API key${limitText}. ${waitText}` +
+      "Any results gathered earlier in this task are incomplete: tell the user the " +
+      "answer is partial instead of presenting totals or rankings as final.",
+    "RATE_LIMITED",
+    429
+  );
 }
 
 function parseRetryAfterMs(header: string | null | undefined): number | undefined {
@@ -91,7 +117,7 @@ export async function fetchFEC<T = unknown>(
   timeoutMs = 30000
 ): Promise<T> {
   const url = buildUrl(path, params);
-  const { retries, baseMs } = getRetryConfig();
+  const { retries, baseMs, maxWaitMs } = getRetryConfig();
 
   const effectiveTimeoutMs = getTimeoutMs(timeoutMs);
   const context = getLogContext();
@@ -151,17 +177,27 @@ export async function fetchFEC<T = unknown>(
     });
 
     if (response.status === 429) {
-      if (attempt < retries) {
-        const retryAfterMs = parseRetryAfterMs(response.headers?.get?.("retry-after"));
-        const backoffMs = baseMs * Math.pow(2, attempt) + Math.random() * baseMs;
-        await sleep(retryAfterMs ?? backoffMs);
+      // OpenFEC (via api.data.gov) sends Retry-After in seconds, and it can be
+      // hours when an hourly or daily quota is spent. Sleeping on that would
+      // hold the MCP request open until the client gives up, which looks like
+      // the server hanging. Only wait when the wait is short; otherwise fail
+      // fast with an error the model can relay.
+      const retryAfterMs = parseRetryAfterMs(response.headers?.get?.("retry-after"));
+      const backoffMs = baseMs * Math.pow(2, attempt) + Math.random() * baseMs;
+      const waitMs = retryAfterMs ?? backoffMs;
+      const willRetry = attempt < retries && waitMs <= maxWaitMs;
+      log("warn", "fec_rate_limited", {
+        path,
+        attempt,
+        ...(rateLimitLimit != null ? { rate_limit_limit: Number(rateLimitLimit) } : {}),
+        ...(retryAfterMs !== undefined ? { retry_after_ms: retryAfterMs } : {}),
+        action: willRetry ? "retry" : "give_up",
+      });
+      if (willRetry) {
+        await sleep(waitMs);
         continue;
       }
-      throw new FecApiError(
-        "FEC API rate limit exceeded. Try again shortly.",
-        "RATE_LIMITED",
-        429
-      );
+      throw rateLimitError(rateLimitLimit, retryAfterMs);
     }
     if (response.status >= 400 && response.status < 500) {
       const body = await response.json().catch(() => ({}) as Record<string, unknown>);

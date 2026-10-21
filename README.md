@@ -183,6 +183,7 @@ tool (e.g. "search for federal candidates named Smith in California").
 | `FEC_MAX_PAGE` | No | 10 | Deep-paging ceiling for `fec_itemized_contributions` / `fec_donor_search` / `fec_itemized_expenditures`; requests for `page` beyond this are rejected |
 | `FEC_RATE_LIMIT_RETRIES` | No | 3 | How many times to retry an HTTP 429 before giving up |
 | `FEC_RATE_LIMIT_BASE_MS` | No | 1000 | Base delay for exponential backoff on 429 (used when the API doesn't send `Retry-After`) |
+| `FEC_RATE_LIMIT_MAX_WAIT_MS` | No | 15000 | Longest wait honored on a 429. If FEC's `Retry-After` (or the backoff) is longer, the call fails immediately with a rate-limit error instead of holding the request open |
 | `LOG_LEVEL` | No | info | `debug`, `info`, `warn`, `error`, or `silent`. JSON lines go to stderr: one `http_request` per hosted request, one `tool_call` per tool invocation (duration, FEC call count, error text on failure), and one `fec_request` per upstream call (status, latency, `rate_limit_limit`, `rate_limit_remaining`). All three share a `request_id`; the startup line shows only the API key's last four characters (or `DEMO_KEY`) |
 | `LOG_TOOL_ARGS` | No | true | Set to `false` to omit tool arguments from `tool_call` log lines |
 

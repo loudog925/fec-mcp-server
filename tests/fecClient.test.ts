@@ -155,6 +155,29 @@ describe("fetchFEC", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("fails fast instead of sleeping when Retry-After exceeds the max wait", async () => {
+    // Real OpenFEC 429s carry Retry-After in seconds and can be hours long.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: {
+        get: (name: string) =>
+          ({ "retry-after": "30138", "x-ratelimit-limit": "120" })[name.toLowerCase()] ?? null,
+      },
+      json: async () => ({}),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const startedAt = Date.now();
+    await expect(fetchFEC("/candidates/search/", {})).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+      status: 429,
+      message: expect.stringMatching(/limit: 120 .*about 8 hours.*partial/s),
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(Date.now() - startedAt).toBeLessThan(1000);
+  });
+
   it("throws RATE_LIMITED after exhausting retries", async () => {
     process.env.FEC_RATE_LIMIT_RETRIES = "2";
     const fetchMock = vi.fn().mockResolvedValue({
