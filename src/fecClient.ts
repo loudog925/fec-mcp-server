@@ -19,6 +19,15 @@ export class FecApiError extends Error {
   }
 }
 
+// Identifies which key is configured without logging it: "DEMO_KEY" verbatim
+// (it is public), otherwise only the last four characters.
+export function describeApiKey(): string {
+  const key = process.env.FEC_API_KEY?.trim();
+  if (!key) return "unset";
+  if (key === "DEMO_KEY") return "DEMO_KEY";
+  return `…${key.slice(-4)}`;
+}
+
 export function getApiKey(): string {
   const key = process.env.FEC_API_KEY;
   if (!key) {
@@ -131,11 +140,13 @@ export async function fetchFEC<T = unknown>(
     }
 
     const rateLimitRemaining = response.headers?.get?.("x-ratelimit-remaining");
+    const rateLimitLimit = response.headers?.get?.("x-ratelimit-limit");
     log(response.ok ? "info" : "warn", "fec_request", {
       path,
       status: response.status,
       attempt,
       ms: Date.now() - startedAt,
+      ...(rateLimitLimit != null ? { rate_limit_limit: Number(rateLimitLimit) } : {}),
       ...(rateLimitRemaining != null ? { rate_limit_remaining: Number(rateLimitRemaining) } : {}),
     });
 

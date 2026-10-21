@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { fetchFEC } from "../src/fecClient.js";
+import { describeApiKey, fetchFEC } from "../src/fecClient.js";
 import { createFecServer } from "../src/server.js";
 import { log, withLogContext } from "../src/logger.js";
 
@@ -58,13 +58,16 @@ describe("fetchFEC logging", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        headers: { get: (h: string) => (h === "x-ratelimit-remaining" ? "42" : null) },
+        headers: {
+          get: (h: string) =>
+            ({ "x-ratelimit-remaining": "42", "x-ratelimit-limit": "1000" })[h] ?? null,
+        },
         json: async () => ({}),
       })
     );
     const { lines } = captureStderr();
     await fetchFEC("/candidates/search/", { q: "x" });
-    expect(lines[0]).toMatchObject({ event: "fec_request", path: "/candidates/search/", status: 200, rate_limit_remaining: 42 });
+    expect(lines[0]).toMatchObject({ event: "fec_request", path: "/candidates/search/", status: 200, rate_limit_limit: 1000, rate_limit_remaining: 42 });
     expect(JSON.stringify(lines)).not.toContain("secret-key");
   });
 
@@ -125,5 +128,20 @@ describe("tool call instrumentation", () => {
     });
     expect(lines.find((l) => l.event === "fec_request")).toMatchObject({ tool: "fec_candidate_search", status: 429 });
     await client.close();
+  });
+});
+
+describe("describeApiKey", () => {
+  afterEach(() => {
+    process.env.FEC_API_KEY = "test-key";
+  });
+
+  it("shows DEMO_KEY verbatim and only the last four characters of a real key", () => {
+    process.env.FEC_API_KEY = "DEMO_KEY";
+    expect(describeApiKey()).toBe("DEMO_KEY");
+    process.env.FEC_API_KEY = "abcdefghijklmnopWXYZ";
+    expect(describeApiKey()).toBe("…WXYZ");
+    delete process.env.FEC_API_KEY;
+    expect(describeApiKey()).toBe("unset");
   });
 });

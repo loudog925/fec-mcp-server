@@ -7,6 +7,7 @@ import { dirname, resolve } from "node:path";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { createFecServer } from "./server.js";
+import { describeApiKey } from "./fecClient.js";
 import { log, withLogContext } from "./logger.js";
 
 loadDotenv({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
@@ -152,6 +153,7 @@ const httpServer = app.listen(port, host, () => {
   log("info", "server_started", {
     url: `http://${host}:${port}/mcp`,
     auth: authToken ? "bearer" : "none",
+    fec_api_key: describeApiKey(),
     allowed_hosts: allowedHosts,
     node: process.version,
     commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7),
