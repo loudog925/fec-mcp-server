@@ -1,3 +1,5 @@
+import { getLogContext, log } from "./logger.js";
+
 const BASE_URL = "https://api.open.fec.gov/v1";
 
 export type FecParams = Record<
@@ -82,15 +84,29 @@ export async function fetchFEC<T = unknown>(
   const url = buildUrl(path, params);
   const { retries, baseMs } = getRetryConfig();
 
+  const effectiveTimeoutMs = getTimeoutMs(timeoutMs);
+  const context = getLogContext();
+
   for (let attempt = 0; ; attempt++) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), getTimeoutMs(timeoutMs));
+    const timeout = setTimeout(() => controller.abort(), effectiveTimeoutMs);
+    const startedAt = Date.now();
+    if (context) context.fec_calls = (context.fec_calls ?? 0) + 1;
 
     let response: Response;
     try {
       response = await fetch(url, { signal: controller.signal });
     } catch (err) {
       const causeCode = (err as { cause?: { code?: string } })?.cause?.code;
+      const timedOut = controller.signal.aborted;
+      log("warn", "fec_request_failed", {
+        path,
+        attempt,
+        ms: Date.now() - startedAt,
+        timed_out: timedOut,
+        timeout_ms: effectiveTimeoutMs,
+        cause: causeCode ?? (err as Error)?.message,
+      });
       if (typeof causeCode === "string" && causeCode.includes("CERT")) {
         throw new FecApiError(
           `TLS certificate error (${causeCode}) while connecting to the FEC API. ` +
@@ -102,12 +118,26 @@ export async function fetchFEC<T = unknown>(
         );
       }
       throw new FecApiError(
-        "FEC API unavailable: the request failed or timed out.",
+        timedOut
+          ? `FEC API did not respond within ${effectiveTimeoutMs / 1000}s for ${path}. ` +
+              "Large or broad queries can be slow on OpenFEC; narrow the filters " +
+              "(date range, cycle, state) and retry."
+          : `FEC API unavailable: the request to ${path} failed` +
+              (causeCode ? ` (${causeCode}).` : "."),
         "UNAVAILABLE"
       );
     } finally {
       clearTimeout(timeout);
     }
+
+    const rateLimitRemaining = response.headers?.get?.("x-ratelimit-remaining");
+    log(response.ok ? "info" : "warn", "fec_request", {
+      path,
+      status: response.status,
+      attempt,
+      ms: Date.now() - startedAt,
+      ...(rateLimitRemaining != null ? { rate_limit_remaining: Number(rateLimitRemaining) } : {}),
+    });
 
     if (response.status === 429) {
       if (attempt < retries) {
